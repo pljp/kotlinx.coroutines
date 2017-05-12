@@ -30,104 +30,99 @@ import org.junit.Test
 class GuideTest {
 --> 
 
-# Guide to kotlinx.coroutines by example
+# 例によるkotlinx.coroutinesの手引き
 
-This is a short guide on core features of `kotlinx.coroutines` with a series of examples.
+これは `kotlinx.coroutines` の中核的機能についての短いガイドで、一連の例を示します。
 
-## Introduction and setup
+## 導入とセットアップ
 
-Kotlin, as a language, provides only minimal low-level APIs in its standard library to enable various other 
-libraries to utilize coroutines. Unlike many other languages with similar capabilities, `async` and `await`
-are not keywords in Kotlin and are not even part of its standard library.
+言語としてのKotlinは、他の様々なライブラリがコルーチンを利用できるようにするために標準ライブラリに最小限の低レベルAPIしか提供していません。 同様の機能を持つ他の多くの言語とは異なり、 `async` と `await` はKotlinのキーワードではなく、標準ライブラリの一部でもありません。
 
-`kotlinx.coroutines` is one such rich library. It contains a number of high-level 
-coroutine-enabled primitives that this guide covers, including `async` and `await`. 
-You need to add a dependency on `kotlinx-coroutines-core` module as explained 
-[here](README.md#using-in-your-projects) to use primitives from this guide in your projects.
+`kotlinx.coroutines` はそのような豊富なライブラリの1つです。これには、asyncとawaitを含む、このガイドで扱う高水準のコルーチンを可能にするプリミティブが含まれています。あなたのプロジェクトでこのガイドのプリミティブを使用するには、[ここ]（README.md＃in-your-projects）で説明する `kotlinx-coroutines-core` モジュールに依存関係を追加する必要があります。
 
-## Table of contents
+## 目次
 
 <!--- TOC -->
 
-* [Coroutine basics](#coroutine-basics)
-  * [Your first coroutine](#your-first-coroutine)
-  * [Bridging blocking and non-blocking worlds](#bridging-blocking-and-non-blocking-worlds)
-  * [Waiting for a job](#waiting-for-a-job)
-  * [Extract function refactoring](#extract-function-refactoring)
-  * [Coroutines ARE light-weight](#coroutines-are-light-weight)
-  * [Coroutines are like daemon threads](#coroutines-are-like-daemon-threads)
-* [Cancellation and timeouts](#cancellation-and-timeouts)
-  * [Cancelling coroutine execution](#cancelling-coroutine-execution)
-  * [Cancellation is cooperative](#cancellation-is-cooperative)
-  * [Making computation code cancellable](#making-computation-code-cancellable)
-  * [Closing resources with finally](#closing-resources-with-finally)
-  * [Run non-cancellable block](#run-non-cancellable-block)
-  * [Timeout](#timeout)
-* [Composing suspending functions](#composing-suspending-functions)
-  * [Sequential by default](#sequential-by-default)
-  * [Concurrent using async](#concurrent-using-async)
-  * [Lazily started async](#lazily-started-async)
-  * [Async-style functions](#async-style-functions)
-* [Coroutine context and dispatchers](#coroutine-context-and-dispatchers)
-  * [Dispatchers and threads](#dispatchers-and-threads)
-  * [Unconfined vs confined dispatcher](#unconfined-vs-confined-dispatcher)
-  * [Debugging coroutines and threads](#debugging-coroutines-and-threads)
-  * [Jumping between threads](#jumping-between-threads)
-  * [Job in the context](#job-in-the-context)
-  * [Children of a coroutine](#children-of-a-coroutine)
-  * [Combining contexts](#combining-contexts)
-  * [Naming coroutines for debugging](#naming-coroutines-for-debugging)
-  * [Cancellation via explicit job](#cancellation-via-explicit-job)
-* [Channels](#channels)
-  * [Channel basics](#channel-basics)
-  * [Closing and iteration over channels](#closing-and-iteration-over-channels)
-  * [Building channel producers](#building-channel-producers)
-  * [Pipelines](#pipelines)
-  * [Prime numbers with pipeline](#prime-numbers-with-pipeline)
-  * [Fan-out](#fan-out)
-  * [Fan-in](#fan-in)
-  * [Buffered channels](#buffered-channels)
-  * [Channels are fair](#channels-are-fair)
-* [Shared mutable state and concurrency](#shared-mutable-state-and-concurrency)
-  * [The problem](#the-problem)
-  * [Volatiles are of no help](#volatiles-are-of-no-help)
-  * [Thread-safe data structures](#thread-safe-data-structures)
-  * [Thread confinement fine-grained](#thread-confinement-fine-grained)
-  * [Thread confinement coarse-grained](#thread-confinement-coarse-grained)
-  * [Mutual exclusion](#mutual-exclusion)
-  * [Actors](#actors)
-* [Select expression](#select-expression)
-  * [Selecting from channels](#selecting-from-channels)
-  * [Selecting on close](#selecting-on-close)
-  * [Selecting to send](#selecting-to-send)
-  * [Selecting deferred values](#selecting-deferred-values)
-  * [Switch over a channel of deferred values](#switch-over-a-channel-of-deferred-values)
-* [Further reading](#further-reading)
+* [コルーチンの基礎](#コルーチンの基礎)
+  * [初めてのコルーチン](#初めてのコルーチン)
+  * [ブロッキングとノンブロッキングの世界の橋渡し](#ブロッキングとノンブロッキングの世界の橋渡し)
+  * [ジョブを待つ](#ジョブを待つ)
+  * [関数抽出リファクタリング](#関数抽出リファクタリング)
+  * [コルーチンは軽量](#コルーチンは軽量)
+  * [コルーチンはデーモンスレッドに似ている](#コルーチンはデーモンスレッドに似ている)
+* [キャンセルとタイムアウト](#キャンセルとタイムアウト)
+  * [コルーチンの実行をキャンセル](#コルーチンの実行をキャンセル)
+  * [キャンセルは協調的](#キャンセルは協調的)
+  * [計算コードのキャンセル可能化](#計算コードのキャンセル可能化)
+  * [finallyでリソースを閉じる](#finallyでリソースを閉じる)
+  * [キャンセル不可ブロックの実行](#キャンセル不可ブロックの実行)
+  * [タイムアウト](#タイムアウト)
+* [サスペンド関数の作成](#サスペンド関数の作成)
+  * [デフォルトでシーケンシャル](#デフォルトでシーケンシャル)
+  * [asyncを使用した並列動作](#asyncを使用した並列動作)
+  * [遅延して開始するasync](#遅延して開始するasync)
+  * [Asyncスタイル関数](#Asyncスタイル関数)
+* [コルーチンコンテキストとディスパッチャー](#コルーチンコンテキストとディスパッチャー)
+  * [ディスパッチャーとスレッド](#ディスパッチャーとスレッド)
+  * [非限定対限定ディスパッチャー](#非限定対限定ディスパッチャー)
+  * [コルーチンとスレッドのデバッグ](#コルーチンとスレッドのデバッグ)
+  * [スレッド間のジャンプ](#スレッド間のジャンプ)
+  * [コンテキストにおけるジョブ](#コンテキストにおけるジョブ)
+  * [コルーチンの子](#コルーチンの子)
+  * [コンテキストの結合](#コンテキストの結合)
+  * [デバッグのためのコルーチンの命名](#デバッグのためのコルーチンの命名)
+  * [明示的なジョブのキャンセル](#明示的なジョブのキャンセル)
+* [チャネル](#チャネル)
+  * [チャネルの基礎](#チャネルの基礎)
+  * [チャネルでのクローズと反復](#チャネルでのクローズと反復)
+  * [チャネルプロデューサの作成](#チャネルプロデューサの作成)
+  * [パイプライン](#パイプライン)
+  * [パイプラインによる素数](#パイプラインによる素数)
+  * [出力数](#出力数)
+  * [入力数](#入力数)
+  * [バッファされたチャネル](#バッファされたチャネル)
+  * [チャネルは公正](#チャネルは公正)
+* [共有されたミュータブルステートと並行性](#共有されたミュータブルステートと並行性)
+  * [問題](#問題)
+  * [Volatileは助けにならない](#Volatileは助けにならない)
+  * [スレッドセーフなデータ構造](#スレッドセーフなデータ構造)
+  * [細かい処理のスレッドへの閉じ込め](#細かい処理のスレッドへの閉じ込め)
+  * [粗粒の処理のスレッドへの閉じ込め](#粗粒の処理のスレッドへの閉じ込め)
+  * [排他制御](#排他制御)
+  * [アクター](#アクター)
+* [セレクト式](#セレクト式)
+  * [チャネルからの選択](#チャネルからの選択)
+  * [クローズの選択](#クローズの選択)
+  * [送信の選択](#送信の選択)
+  * [延期された値の選択](#延期された値の選択)
+  * [延期された値のチャネルの切り替え](#延期された値のチャネルの切り替え)
+* [参考文献](#参考文献)
 
 <!--- END_TOC -->
 
-## Coroutine basics
+## コルーチンの基礎
 
-This section covers basic coroutine concepts.
+このセクションでは、基本的なコルーチンの概念について説明します。
 
-### Your first coroutine
+### 初めてのコルーチン
 
-Run the following code:
+次のコードを実行します。
 
 ```kotlin
 fun main(args: Array<String>) {
-    launch(CommonPool) { // create new coroutine in common thread pool
-        delay(1000L) // non-blocking delay for 1 second (default time unit is ms)
-        println("World!") // print after delay
+    launch(CommonPool) { // 共有スレッドプールに新しいコルーチンを作成する
+        delay(1000L) // 1秒間ノンブロッキング遅延 (デフォルトの時間単位はms)
+        println("World!") // delayのあとでプリント
     }
-    println("Hello,") // main function continues while coroutine is delayed
-    Thread.sleep(2000L) // block main thread for 2 seconds to keep JVM alive
+    println("Hello,") // コルーチンが遅延している間、メイン関数は継続する
+    Thread.sleep(2000L) // メインスレッドを2秒間ブロックしてJVMを存続させます
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-01.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-01.kt)で完全なコードを取得できます。
 
-Run this code:
+このコードを実行します。
 
 ```text
 Hello,
@@ -136,95 +131,91 @@ World!
 
 <!--- TEST -->
 
-Essentially, coroutines are light-weight threads.
-They are launched with [launch] _coroutine builder_.
-You can achieve the same result replacing
-`launch(CommonPool) { ... }` with `thread { ... }` and `delay(...)` with `Thread.sleep(...)`. Try it.
+基本的に、コルーチンは軽量スレッドです。
+それらは[launch] _コルーチンビルダー_ で起動します。
+`launch(CommonPool) { ... }` を `thread { ... }` に、 `delay(...)` を `Thread.sleep(...)` に置き換えても同じ結果が得られます。試してみてください。
 
-If you start by replacing `launch(CommonPool)` by `thread`, the compiler produces the following error:
+`launch(CommonPool)` を `thread` に置き換えて起動すると、コンパイラは次のエラーを生成します。
 
 ```
-Error: Kotlin: Suspend functions are only allowed to be called from a coroutine or another suspend function
+Error: Kotlin: サスペンド関数は、コルーチンまたは他のサスペンド関数からのみ呼び出すことができます
 ```
 
-That is because [delay] is a special _suspending function_ that does not block a thread, but _suspends_
-coroutine and it can be only used from a coroutine.
+これは、 [delay] がスレッドをブロックせず、コルーチンを _中断_ しコルーチンからのみ使用できる特別な _サスペンド関数_ であるためです。
 
-### Bridging blocking and non-blocking worlds
+### ブロッキングとノンブロッキングの世界の橋渡し
 
-The first example mixes _non-blocking_ `delay(...)` and _blocking_ `Thread.sleep(...)` in the same
-code of `main` function. It is easy to get lost. Let's cleanly separate blocking and non-blocking
-worlds by using [runBlocking]:
+最初の例では、 `main` 関数の同じコード内に、_ノンブロッキング_ `delay(...)` と _ブロッキング_ `Thread.sleep(...)` を混在させています。
+迷子になるのは簡単です。
+[runBlocking]を使用して、ブロッキングとノンブロッキングの世界をきれいに分離しましょう。
 
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> { // start main coroutine
-    launch(CommonPool) { // create new coroutine in common thread pool
+fun main(args: Array<String>) = runBlocking<Unit> { // メインコルーチンを開始
+    launch(CommonPool) { // 共有スレッドプールに新しいコルーチンを作成する
         delay(1000L)
         println("World!")
     }
-    println("Hello,") // main coroutine continues while child is delayed
-    delay(2000L) // non-blocking delay for 2 seconds to keep JVM alive
+    println("Hello,") // 子が遅延している間メインコルーチンは継続する
+    delay(2000L) // 2秒間ノンブロッキング遅延してJVMを存続させる
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-02.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-02.kt)で完全なコードを取得できます。
 
 <!--- TEST
 Hello,
 World!
 -->
 
-The result is the same, but this code uses only non-blocking [delay]. 
+結果は同じですが、このコードではノンブロッキング[delay]のみを使用しています。
 
-`runBlocking { ... }` works as an adaptor that is used here to start the top-level main coroutine. 
-The regular code outside of `runBlocking` _blocks_, until the coroutine inside `runBlocking` is active. 
+`runBlocking { ... }` は、トップレベルのメインコルーチンを起動するためにここで使用されるアダプタとして機能します。
+`runBlocking` の外側の通常のコードは、 `runBlocking` 内部のコルーチンがアクティブになるまで _ブロック_ します。
 
-This is also a way to write unit-tests for suspending functions:
+これはまた、サスペンド関数の単体テストを書く方法でもあります。
  
 ```kotlin
 class MyTest {
     @Test
     fun testMySuspendingFunction() = runBlocking<Unit> {
-        // here we can use suspending functions using any assertion style that we like
+        // ここでは、好きなアサーションスタイルを使ってサスペンド関数を使うことができます
     }
 }
 ```
 
 <!--- CLEAR -->
  
-### Waiting for a job
+### ジョブを待つ
 
-Delaying for a time while another coroutine is working is not a good approach. Let's explicitly 
-wait (in a non-blocking way) until the background [Job] that we have launched is complete:
+別のコルーチンが動作している間遅延させるのは良い方法ではありません。
+立ち上げたバックグラウンド[Job]が完了するまで明示的に（ノンブロッキングの方法で）待ちましょう。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val job = launch(CommonPool) { // create new coroutine and keep a reference to its Job
+    val job = launch(CommonPool) { // 新しいコルーチンを作成し、そのJobへの参照を保持する
         delay(1000L)
         println("World!")
     }
     println("Hello,")
-    job.join() // wait until child coroutine completes
+    job.join() // 子コルーチンが完了するまで待つ
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-03.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-03.kt)で完全なコードを取得できます。
 
 <!--- TEST
 Hello,
 World!
 -->
 
-Now the result is still the same, but the code of the main coroutine is not tied to the duration of
-the background job in any way. Much better.
+結果は変わりませんが、メインコルーチンのコードはバックグラウンドジョブの継続時間に結びついていません。ずっと良いです。
 
-### Extract function refactoring
+### 関数抽出リファクタリング
 
-Let's extract the block of code inside `launch(CommonPool} { ... }` into a separate function. When you 
-perform "Extract function" refactoring on this code you get a new function with `suspend` modifier.
-That is your first _suspending function_. Suspending functions can be used inside coroutines
-just like regular functions, but their additional feature is that they can, in turn, 
-use other suspending functions, like `delay` in this example, to _suspend_ execution of a coroutine.
+`launch(CommonPool) { ... }` の中のコードブロックを別の関数に抽出しましょう。
+このコードで "Extract function"リファクタリングを実行すると、 `suspend` 修飾子付きの新しい関数が得られます。
+それがあなたの最初の _サスペンド関数_ です。
+サスペンド関数は、通常の関数と同様にコルーチン内で使用できますが、追加機能として、この例では `delay`のような他のサスペンド関数を使用してコルーチンの実行を _中断_ することができます。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -233,47 +224,46 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     job.join()
 }
 
-// this is your first suspending function
+// これはあなたの最初のサスペンド関数
 suspend fun doWorld() {
     delay(1000L)
     println("World!")
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-04.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-04.kt)で完全なコードを取得できます
 
 <!--- TEST
 Hello,
 World!
 -->
 
-### Coroutines ARE light-weight
+### コルーチンは軽量
 
-Run the following code:
+次のコードを実行します。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val jobs = List(100_000) { // create a lot of coroutines and list their jobs
+    val jobs = List(100_000) { // コルーチンをたくさん作り、ジョブをリストする
         launch(CommonPool) {
             delay(1000L)
             print(".")
         }
     }
-    jobs.forEach { it.join() } // wait for all jobs to complete
+    jobs.forEach { it.join() } // すべてのジョブが完了するのを待つ
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-05.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-05.kt)で完全なコードを取得できます
 
 <!--- TEST lines.size == 1 && lines[0] == ".".repeat(100_000) -->
 
-It starts 100K coroutines and, after a second, each coroutine prints a dot. 
-Now, try that with threads. What would happen? (Most likely your code will produce some sort of out-of-memory error)
+10万個のコルーチンを開始し、1分後に各コルーチンがドットをプリントします。
+スレッドを使って試したらどうなるでしょうか？ （ほとんどの場合、あなたのコードはメモリ不足エラーを引き起こすでしょう）
 
-### Coroutines are like daemon threads
+### コルーチンはデーモンスレッドに似ている
 
-The following code launches a long-running coroutine that prints "I'm sleeping" twice a second and then 
-returns from the main function after some delay:
+次のコードでは、「I'm sleeping」というメッセージを毎秒2回出力し、次にある程度遅れてmain関数からリターンする長期実行のコルーチンを起動します。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -283,13 +273,13 @@ fun main(args: Array<String>) = runBlocking<Unit> {
             delay(500L)
         }
     }
-    delay(1300L) // just quit after delay
+    delay(1300L) // 遅れて終了する
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-06.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-06.kt)で完全なコードを取得できます
 
-You can run and see that it prints three lines and terminates:
+実行すると、3行を出力して終了することがわかります。
 
 ```text
 I'm sleeping 0 ...
@@ -299,7 +289,7 @@ I'm sleeping 2 ...
 
 <!--- TEST -->
 
-Active coroutines do not keep the process alive. They are like daemon threads.
+アクティブなコルーチンはプロセスを生かし続けるわけではありません。それらはデーモンスレッドのようなものです。
 
 ## Cancellation and timeouts
 
