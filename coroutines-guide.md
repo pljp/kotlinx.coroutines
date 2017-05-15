@@ -30,7 +30,7 @@ import org.junit.Test
 class GuideTest {
 --> 
 
-# 例によるkotlinx.coroutinesの手引き
+# 実例によるkotlinx.coroutinesの手引き
 
 これは `kotlinx.coroutines` の中核的機能についての短いガイドで、一連の例を示します。
 
@@ -38,7 +38,7 @@ class GuideTest {
 
 言語としてのKotlinは、他の様々なライブラリがコルーチンを利用できるようにするために標準ライブラリに最小限の低レベルAPIしか提供していません。 同様の機能を持つ他の多くの言語とは異なり、 `async` と `await` はKotlinのキーワードではなく、標準ライブラリの一部でもありません。
 
-`kotlinx.coroutines` はそのような豊富なライブラリの1つです。これには、asyncとawaitを含む、このガイドで扱う高水準のコルーチンを可能にするプリミティブが含まれています。あなたのプロジェクトでこのガイドのプリミティブを使用するには、[ここ]（README.md＃in-your-projects）で説明する `kotlinx-coroutines-core` モジュールに依存関係を追加する必要があります。
+`kotlinx.coroutines` はそのような豊富なライブラリの1つです。これには、asyncとawaitを含む、このガイドで扱う高水準のコルーチンを可能にするプリミティブが含まれています。あなたのプロジェクトでこのガイドのプリミティブを使用するには、[ここ](README.md#in-your-projects)で説明する `kotlinx-coroutines-core` モジュールに依存関係を追加する必要があります。
 
 ## 目次
 
@@ -54,7 +54,7 @@ class GuideTest {
 * [キャンセルとタイムアウト](#キャンセルとタイムアウト)
   * [コルーチンの実行をキャンセル](#コルーチンの実行をキャンセル)
   * [キャンセルは協調的](#キャンセルは協調的)
-  * [計算コードのキャンセル可能化](#計算コードのキャンセル可能化)
+  * [計算コードをキャンセル可能にする](#計算コードをキャンセル可能にする)
   * [finallyでリソースを閉じる](#finallyでリソースを閉じる)
   * [キャンセル不可ブロックの実行](#キャンセル不可ブロックの実行)
   * [タイムアウト](#タイムアウト)
@@ -291,15 +291,15 @@ I'm sleeping 2 ...
 
 アクティブなコルーチンはプロセスを生かし続けるわけではありません。それらはデーモンスレッドのようなものです。
 
-## Cancellation and timeouts
+## キャンセルとタイムアウト
 
-This section covers coroutine cancellation and timeouts.
+このセクションでは、コルーチンのキャンセルとタイムアウトについて説明します。
 
-### Cancelling coroutine execution
+### コルーチンの実行をキャンセル
 
-In small application the return from "main" method might sound like a good idea to get all coroutines 
-implicitly terminated. In a larger, long-running application, you need finer-grained control.
-The [launch] function returns a [Job] that can be used to cancel running coroutine:
+小さなアプリケーションでは、"main"メソッドからのリターンは、暗黙的にすべてのコルーチンを終了させる良い考えのように思えるかもしれません。
+大規模で長時間実行されるアプリケーションでは、きめ細かな制御が必要です。
+[launch]関数は、実行中のコルーチンを取り消すために使用できる[job]を返します。
  
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -309,17 +309,17 @@ fun main(args: Array<String>) = runBlocking<Unit> {
             delay(500L)
         }
     }
-    delay(1300L) // delay a bit
+    delay(1300L) // 少し遅らせる
     println("main: I'm tired of waiting!")
-    job.cancel() // cancels the job
-    delay(1300L) // delay a bit to ensure it was cancelled indeed
+    job.cancel() // ジョブをキャンセル
+    delay(1300L) // それが本当にキャンセルされたことを確認するために少し遅れさせる
     println("main: Now I can quit.")
 }
 ``` 
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-01.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-01.kt)で完全なコードを取得できます
 
-It produces the following output:
+次の出力が生成されます。
 
 ```text
 I'm sleeping 0 ...
@@ -331,22 +331,21 @@ main: Now I can quit.
 
 <!--- TEST -->
 
-As soon as main invokes `job.cancel`, we don't see any output from the other coroutine because it was cancelled. 
+メインが `job.cancel` を呼び出すとすぐにキャンセルされるため他のコルーチンからの出力は表示されません。
 
-### Cancellation is cooperative
+### キャンセルは協調的
 
-Coroutine cancellation is _cooperative_. A coroutine code has to cooperate to be cancellable.
-All the suspending functions in `kotlinx.coroutines` are _cancellable_. They check for cancellation of 
-coroutine and throw [CancellationException] when cancelled. However, if a coroutine is working in 
-a computation and does not check for cancellation, then it cannot be cancelled, like the following 
-example shows:
+コルーチンのキャンセルは _協調的_ です。コルーチンコードは取り消し可能にするために協調しなければなりません。
+`kotlinx.coroutines` のサスペンド関数はすべて _キャンセル可能_ です。
+これらはコルーチンのキャンセルをチェックし、キャンセルすると[CancellationException]をスローします。
+ただし、コルーチンが計算で作業していて取り消しをチェックしていない場合、次の例のように取り消すことはできません。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val job = launch(CommonPool) {
         var nextPrintTime = 0L
         var i = 0
-        while (i < 10) { // computation loop
+        while (i < 10) { // 計算ループ
             val currentTime = System.currentTimeMillis()
             if (currentTime >= nextPrintTime) {
                 println("I'm sleeping ${i++} ...")
@@ -354,17 +353,17 @@ fun main(args: Array<String>) = runBlocking<Unit> {
             }
         }
     }
-    delay(1300L) // delay a bit
+    delay(1300L) // 少し遅らせる
     println("main: I'm tired of waiting!")
-    job.cancel() // cancels the job
-    delay(1300L) // delay a bit to see if it was cancelled....
+    job.cancel() // ジョブをキャンセル
+    delay(1300L) // キャンセルされたかどうか確かめるために少し遅らせる…
     println("main: Now I can quit.")
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-02.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-02.kt)で完全なコードを取得できます
 
-Run it to see that it continues to print "I'm sleeping" even after cancellation.
+実行して、キャンセル後も「私は眠っています」とプリントし続けることを確認します。
 
 <!--- TEST 
 I'm sleeping 0 ...
@@ -377,20 +376,21 @@ I'm sleeping 5 ...
 main: Now I can quit.
 -->
 
-### Making computation code cancellable
+### 計算コードをキャンセル可能にする
 
-There are two approaches to making computation code cancellable. The first one is to periodically 
-invoke a suspending function. There is a [yield] function that is a good choice for that purpose.
-The other one is to explicitly check the cancellation status. Let us try the later approach. 
+計算コードをキャンセル可能にするには2つの方法があります。
+1つは、定期的にサスペンド関数を呼び出すことです。
+その目的のために良い選択肢である[yield]関数があります。
+もう1つは、キャンセルステータスを明示的にチェックすることです。後者の方法を試してみましょう。
 
-Replace `while (true)` in the previous example with `while (isActive)` and rerun it. 
+前の例の `while (true)` を `while (isActive)` に置き換えて再実行してください。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val job = launch(CommonPool) {
         var nextPrintTime = 0L
         var i = 0
-        while (isActive) { // cancellable computation loop
+        while (isActive) { // キャンセル可能な計算ループ
             val currentTime = System.currentTimeMillis()
             if (currentTime >= nextPrintTime) {
                 println("I'm sleeping ${i++} ...")
@@ -398,18 +398,18 @@ fun main(args: Array<String>) = runBlocking<Unit> {
             }
         }
     }
-    delay(1300L) // delay a bit
+    delay(1300L) // 少し遅らせる
     println("main: I'm tired of waiting!")
-    job.cancel() // cancels the job
-    delay(1300L) // delay a bit to see if it was cancelled....
+    job.cancel() // ジョブをキャンセル
+    delay(1300L) // キャンセルされたかどうか確かめるために少し遅らせる…
     println("main: Now I can quit.")
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-03.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-03.kt)で完全なコードを取得できます
 
-As you can see, now this loop can be cancelled. [isActive][CoroutineScope.isActive] is a property that is available inside
-the code of coroutines via [CoroutineScope] object.
+ご覧のとおり、このループはキャンセルできます。
+[isActive] [CoroutineScope.isActive]は、[CoroutineScope]オブジェクトを介してコルーチンのコード内で使用できるプロパティです。
 
 <!--- TEST
 I'm sleeping 0 ...
@@ -419,11 +419,17 @@ main: I'm tired of waiting!
 main: Now I can quit.
 -->
 
-### Closing resources with finally
+### finallyでリソースを閉じる
 
 Cancellable suspending functions throw [CancellationException] on cancellation which can be handled in 
 all the usual way. For example, the `try {...} finally {...}` and Kotlin `use` function execute their
 finalization actions normally when coroutine is cancelled:
+
+Cancellable suspending functions throw CancellationException on cancellation which can be handled in all the usual way. 
+For example, the `try {...} finally {...}` and Kotlin `use` function execute their finalization actions normally when coroutine is cancelled:
+
+キャンセル可能なサスペンド関数は、キャンセルの際に通常の方法で処理できるCancellationExceptionをスローします。
+たとえば、 `try {...} finally {...}` とKotlin `use` 関数は、コルーチンがキャンセルされたときに、通常の終了処理を実行します。
  
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -437,17 +443,17 @@ fun main(args: Array<String>) = runBlocking<Unit> {
             println("I'm running finally")
         }
     }
-    delay(1300L) // delay a bit
+    delay(1300L) // 少し遅らせる
     println("main: I'm tired of waiting!")
-    job.cancel() // cancels the job
-    delay(1300L) // delay a bit to ensure it was cancelled indeed
+    job.cancel() // ジョブをキャンセル
+    delay(1300L) // 本当にキャンセルされたことを確認するために少し遅らせる
     println("main: Now I can quit.")
 }
 ``` 
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-04.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-04.kt)で完全なコードを取得できます
 
-The example above produces the following output:
+この例は次の出力を生成します。
 
 ```text
 I'm sleeping 0 ...
@@ -460,14 +466,11 @@ main: Now I can quit.
 
 <!--- TEST -->
 
-### Run non-cancellable block
+### キャンセル不可ブロックの実行
 
-Any attempt to use a suspending function in the `finally` block of the previous example will cause
-[CancellationException], because the coroutine running this code is cancelled. Usually, this is not a 
-problem, since all well-behaving closing operations (closing a file, cancelling a job, or closing any kind of a 
-communication channel) are usually non-blocking and do not involve any suspending functions. However, in the 
-rare case when you need to suspend in the cancelled coroutine you can wrap the corresponding code in
-`run(NonCancellable) {...}` using [run] function and [NonCancellable] context as the following example shows:
+前の例の `finally` ブロックでサスペンド関数を使用しようとすると、このコードを実行しているコルーチンがキャンセルされるため[CancellationException]が発生します。
+（ファイルを閉じる、ジョブをキャンセルする、またはあらゆる種類の通信チャネルを閉じるなど）正常に動作するすべてのクローズ操作は大抵ノンブロッキングであり、サスペンド関数は含まれないため、通常これは問題ではありません。
+ただし、キャンセルされたコルーチンで中断する必要があるまれなケースでは、次の例のように [run]関数と [NonCancellable]コンテキストを使用して `run(NonCancellable) {...}` に対応するコードをラップすることができます。
  
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -493,7 +496,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ``` 
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-05.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-05.kt)で完全なコードを取得できます
 
 <!--- TEST
 I'm sleeping 0 ...
@@ -505,13 +508,21 @@ And I've just delayed for 1 sec because I'm non-cancellable
 main: Now I can quit.
 -->
 
-### Timeout
+### タイムアウト
 
 The most obvious reason to cancel coroutine execution in practice, 
 is because its execution time has exceeded some timeout.
 While you can manually track the reference to the corresponding [Job] and launch a separate coroutine to cancel 
 the tracked one after delay, there is a ready to use [withTimeout] function that does it.
 Look at the following example:
+
+The most obvious reason to cancel coroutine execution in practice, is because its execution time has exceeded some timeout.
+While you can manually track the reference to the corresponding "Job" and launch a separate coroutine to cancel the tracked one after delay, there is a ready to use "withTimeout" function that does it.
+Look at the following example:
+
+コルーチンの実行を実際にキャンセルする最も明白な理由は、その実行時間がタイムアウトを超えたためです。
+対応する[Job]への参照を手動で追跡し、遅延の後で追跡されたものを取り消すために別のコルーチンを起動することはできますが、それを行う[withTimeout]関数が用意されています。
+次の例を見てください。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -524,9 +535,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-06.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-06.kt)で完全なコードを取得できます
 
-It produces the following output:
+これは次の出力を生成します。
 
 ```text
 I'm sleeping 0 ...
@@ -537,14 +548,13 @@ Exception in thread "main" kotlinx.coroutines.experimental.TimeoutException: Tim
 
 <!--- TEST STARTS_WITH -->
 
-The `TimeoutException` that is thrown by [withTimeout] is a private subclass of [CancellationException].
-We have not seen its stack trace printed on the console before. That is because
-inside a cancelled coroutine `CancellationException` is considered to be a normal reason for coroutine completion. 
-However, in this example we have used `withTimeout` right inside the `main` function. 
+[withTimeout]によってスローされる `TimeoutException` は、[CancellationException]のプライベートサブクラスです。
+先のコンソールにはスタックトレースが表示されていませんでした。
+キャンセルされたコルーチン内の `CancellationException` がコルーチン完了の通常の理由であると考えられるためです。
+しかし、この例では `main` 関数の中で `withTimeout` を使用しています。
 
-Because cancellation is just an exception, all the resources will be closed in a usual way. 
-You can wrap the code with timeout in `try {...} catch (e: CancellationException) {...}` block if 
-you need to do some additional action specifically on timeout.
+キャンセルは単なる例外なので、すべてのリソースは通常の方法で閉じられます。
+タイムアウト時に特別なアクションを追加する必要がある場合は、 `try {...} catch (e：CancellationException) {...}` ブロックでタイムアウトを使ったコードをラップすることができます。
 
 ## Composing suspending functions
 
