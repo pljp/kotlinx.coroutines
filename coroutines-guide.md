@@ -59,9 +59,9 @@ class GuideTest {
   * [キャンセル不可ブロックの実行](#キャンセル不可ブロックの実行)
   * [タイムアウト](#タイムアウト)
 * [サスペンド関数の作成](#サスペンド関数の作成)
-  * [デフォルトでシーケンシャル](#デフォルトでシーケンシャル)
+  * [デフォルトではシーケンシャル](#デフォルトではシーケンシャル)
   * [asyncを使用した並列動作](#asyncを使用した並列動作)
-  * [遅延して開始するasync](#遅延して開始するasync)
+  * [遅延して開始されるasync](#遅延して開始されるasync)
   * [Asyncスタイル関数](#Asyncスタイル関数)
 * [コルーチンコンテキストとディスパッチャー](#コルーチンコンテキストとディスパッチャー)
   * [ディスパッチャーとスレッド](#ディスパッチャーとスレッド)
@@ -421,13 +421,6 @@ main: Now I can quit.
 
 ### finallyでリソースを閉じる
 
-Cancellable suspending functions throw [CancellationException] on cancellation which can be handled in 
-all the usual way. For example, the `try {...} finally {...}` and Kotlin `use` function execute their
-finalization actions normally when coroutine is cancelled:
-
-Cancellable suspending functions throw CancellationException on cancellation which can be handled in all the usual way. 
-For example, the `try {...} finally {...}` and Kotlin `use` function execute their finalization actions normally when coroutine is cancelled:
-
 キャンセル可能なサスペンド関数は、キャンセルの際に通常の方法で処理できるCancellationExceptionをスローします。
 たとえば、 `try {...} finally {...}` とKotlin `use` 関数は、コルーチンがキャンセルされたときに、通常の終了処理を実行します。
  
@@ -510,16 +503,6 @@ main: Now I can quit.
 
 ### タイムアウト
 
-The most obvious reason to cancel coroutine execution in practice, 
-is because its execution time has exceeded some timeout.
-While you can manually track the reference to the corresponding [Job] and launch a separate coroutine to cancel 
-the tracked one after delay, there is a ready to use [withTimeout] function that does it.
-Look at the following example:
-
-The most obvious reason to cancel coroutine execution in practice, is because its execution time has exceeded some timeout.
-While you can manually track the reference to the corresponding "Job" and launch a separate coroutine to cancel the tracked one after delay, there is a ready to use "withTimeout" function that does it.
-Look at the following example:
-
 コルーチンの実行を実際にキャンセルする最も明白な理由は、その実行時間がタイムアウトを超えたためです。
 対応する[Job]への参照を手動で追跡し、遅延の後で追跡されたものを取り消すために別のコルーチンを起動することはできますが、それを行う[withTimeout]関数が用意されています。
 次の例を見てください。
@@ -556,15 +539,13 @@ Exception in thread "main" kotlinx.coroutines.experimental.TimeoutException: Tim
 キャンセルは単なる例外なので、すべてのリソースは通常の方法で閉じられます。
 タイムアウト時に特別なアクションを追加する必要がある場合は、 `try {...} catch (e：CancellationException) {...}` ブロックでタイムアウトを使ったコードをラップすることができます。
 
-## Composing suspending functions
+## サスペンド関数の作成
 
-This section covers various approaches to composition of suspending functions.
+このセクションでは、サスペンド関数のさまざまな構成方法について説明します。
 
-### Sequential by default
+### デフォルトではシーケンシャル
 
-Assume that we have two suspending functions defined elsewhere that do something useful like some kind of 
-remote service call or computation. We just pretend they are useful, but actually each one just
-delays for a second for the purpose of this example:
+何らかのリモートサービスコールや計算のように有用な何かを行う他の場所で定義された2つのサスペンド関数があるとします。 実際にはこの例の目的のためにそれぞれただ1秒遅らせるだけですが、これらは有用なものとしておきます。
 
 <!--- INCLUDE .*/example-compose-([0-9]+).kt
 import kotlin.system.measureTimeMillis
@@ -572,26 +553,23 @@ import kotlin.system.measureTimeMillis
 
 ```kotlin
 suspend fun doSomethingUsefulOne(): Int {
-    delay(1000L) // pretend we are doing something useful here
+    delay(1000L) // 何か有用なことをしているふり
     return 13
 }
 
 suspend fun doSomethingUsefulTwo(): Int {
-    delay(1000L) // pretend we are doing something useful here, too
+    delay(1000L) // これも、何か有用なことをしているふり
     return 29
 }
 ```
 
 <!--- INCLUDE .*/example-compose-([0-9]+).kt -->
 
-What do we do if need to invoke them _sequentially_ -- first `doSomethingUsefulOne` _and then_ 
-`doSomethingUsefulTwo` and compute the sum of their results? 
-In practise we do this if we use the results of the first function to make a decision on whether we need 
-to invoke the second one or to decide on how to invoke it.
+最初に `doSomethingUsefulOne` を実行してから `doSomethingUsefulTwo` を実行し、その結果の合計を計算します。これを _連続して_ 呼び出す必要がある場合はどうすればよいですか。
+実際には、第1の関数の結果を使用して、第2の関数を呼び出す必要があるかどうか、あるいは呼び出し方法を決定するために、これを行います。
 
-We just use a normal sequential invocation, because the code in the coroutine, just like in the regular 
-code, is _sequential_ by default. The following example demonstrates it by measuring the total 
-time it takes to execute both suspending functions:
+コルーチンのコードは通常のコードと同様にデフォルトでは _シーケンシャル_ なので、通常の順次呼び出しを使用します。
+次の例は、両方のサスペンド関数を実行するのにかかる合計時間を測定することによってそれを示しています。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -604,9 +582,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-01.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-01.kt)で完全なコードを取得できます
 
-It produces something like this:
+これは次のような出力をします。
 
 ```text
 The answer is 42
@@ -615,16 +593,15 @@ Completed in 2017 ms
 
 <!--- TEST FLEXIBLE_TIME -->
 
-### Concurrent using async
+### asyncを使用した並列動作
 
-What if there are no dependencies between invocation of `doSomethingUsefulOne` and `doSomethingUsefulTwo` and
-we want to get the answer faster, by doing both _concurrently_? This is where [async] comes to help. 
- 
-Conceptually, [async] is just like [launch]. It starts a separate coroutine which is a light-weight thread 
-that works concurrently with all the other coroutines. The difference is that `launch` returns a [Job] and 
-does not carry any resulting value, while `async` returns a [Deferred] -- a light-weight non-blocking future
-that represents a promise to provide a result later. You can use `.await()` on a deferred value to get its eventual result,
-but `Deferred` is also a `Job`, so you can cancel it if needed.
+`doSomethingUsefulOne` と `doSomethingUsefulTwo` の呼び出しの間に依存関係がなく、両方を _同時_ に行うことでより速く答えを出したいのですが？
+これは[async]が助けになる場面です。
+
+概念的には、[async]は[launch]と同じです。
+これは別のコルーチンを開始します。このコルーチンは、他のすべてのコルーチンと同時に動作する軽量スレッドです。
+相違点は `launch` は[Job]を返し、結果の値は持ちませんが、 `async` は結果を後で提供する約束を表す軽量でノンブロッキングなフューチャーである[Deferred]を返します。
+遅延された値に対して `.await()` を使用して最終的な結果を得ることができますが、 `Deferred` も `Job` なので必要に応じてキャンセルすることができます。
  
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -637,9 +614,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-02.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-02.kt)で完全なコードを取得できます
 
-It produces something like this:
+次のようなものが生成されます。
 
 ```text
 The answer is 42
@@ -648,15 +625,14 @@ Completed in 1017 ms
 
 <!--- TEST FLEXIBLE_TIME -->
 
-This is twice as fast, because we have concurrent execution of two coroutines. 
-Note, that concurrency with coroutines is always explicit.
+2つのコルーチンが同時に実行されるため、これは2倍高速です。
+コルーチンの並行性は常に明示的であることに注意してください。
 
-### Lazily started async
+### 遅延して開始されるasync
 
-There is a laziness option to [async] with [CoroutineStart.LAZY] parameter. 
-It starts coroutine only when its result is needed by some 
-[await][Deferred.await] or if a [start][Job.start] function 
-is invoked. Run the following example that differs from the previous one only by this option:
+[CoroutineStart.LAZY]パラメータを使用して[async]にするための遅延オプションがあります。
+コルーチンは、 [await][Deferred.await]または [start][Job.start]関数が呼び出されたときにその結果が必要な場合にのみ開始されます。
+前の例とこのオプションだけが異なる次の例を実行します。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -669,9 +645,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-03.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-03.kt)で完全なコードを取得できます
 
-It produces something like this:
+次のようなものが生成されます。
 
 ```text
 The answer is 42
@@ -680,16 +656,14 @@ Completed in 2017 ms
 
 <!--- TEST FLEXIBLE_TIME -->
 
-So, we are back to sequential execution, because we _first_ start and await for `one`, _and then_ start and await
-for `two`. It is not the intended use-case for laziness. It is designed as a replacement for
-the standard `lazy` function in cases when computation of the value involves suspending functions.
+なんと、シーケンシャルな実行に戻ってしまいました。これは、最初に `one` を開始して待ってから、`two` を開始して待つためです。
+遅延にとって意図されたユースケースではありません。
+これは値の計算にサスペンド関数が含まれるときに、標準の `lazy` 関数に代わるものとして設計されています。
 
-### Async-style functions
+### Asyncスタイル関数
 
-We can define async-style functions that invoke `doSomethingUsefulOne` and `doSomethingUsefulTwo`
-_asynchronously_ using [async] coroutine builder. It is a good style to name such functions with 
-either "async" prefix of "Async" suffix to highlight the fact that they only start asynchronous 
-computation and one needs to use the resulting deferred value to get the result.
+[async]コルーチンビルダーを使用して _非同期的_ に `doSomethingUsefulOne` と `doSomethingUsefulTwo` を呼び出すasyncスタイルの関数を定義できます。
+"async"接頭辞か"Async"接尾辞を付けて、常に非同期で計算を開始し、その結果得られる遅延値を使用する必要があるという事実を強調するために、このような関数の名前を付けることは良いスタイルです。
 
 ```kotlin
 // The result type of asyncSomethingUsefulOne is Deferred<Int>
@@ -703,14 +677,14 @@ fun asyncSomethingUsefulTwo() = async(CommonPool)  {
 }
 ```
 
-Note, that these `asyncXXX` function are **not** _suspending_ functions. They can be used from anywhere.
-However, their use always implies asynchronous (here meaning _concurrent_) execution of their action
-with the invoking code.
- 
-The following example shows their use outside of coroutine:  
+これらの `asyncXXX` 関数は、_サスペンド_ 関数**ではない**ことに注意してください。
+これらはどこからでも使用できます。
+しかし、呼び出すコードのアクションは常に非同期（ここでは _並行実行_ を意味する）実行であること意味します。
+
+次の例は、コルーチンの外部での使用例を示しています。
  
 ```kotlin
-// note, that we don't have `runBlocking` to the right of `main` in this example
+// この例では、 `main` の右側に `runBlocking` がないことに注意してください
 fun main(args: Array<String>) {
     val time = measureTimeMillis {
         // we can initiate async actions outside of a coroutine
@@ -726,7 +700,7 @@ fun main(args: Array<String>) {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-04.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-04.kt)で完全なコードを取得できます
 
 <!--- TEST FLEXIBLE_TIME
 The answer is 42
