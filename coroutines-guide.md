@@ -65,14 +65,14 @@ class GuideTest {
   * [Asyncスタイル関数](#Asyncスタイル関数)
 * [コルーチンコンテキストとディスパッチャー](#コルーチンコンテキストとディスパッチャー)
   * [ディスパッチャーとスレッド](#ディスパッチャーとスレッド)
-  * [非限定対限定ディスパッチャー](#非限定対限定ディスパッチャー)
+  * [制約なし対制約ディスパッチャー](#制約なし対制約ディスパッチャー)
   * [コルーチンとスレッドのデバッグ](#コルーチンとスレッドのデバッグ)
   * [スレッド間のジャンプ](#スレッド間のジャンプ)
   * [コンテキストにおけるジョブ](#コンテキストにおけるジョブ)
   * [コルーチンの子](#コルーチンの子)
   * [コンテキストの結合](#コンテキストの結合)
   * [デバッグのためのコルーチンの命名](#デバッグのためのコルーチンの命名)
-  * [明示的なジョブのキャンセル](#明示的なジョブのキャンセル)
+  * [明示的なジョブによるキャンセル](#明示的なジョブによるキャンセル)
 * [チャネル](#チャネル)
   * [チャネルの基礎](#チャネルの基礎)
   * [チャネルでのクローズと反復](#チャネルでのクローズと反復)
@@ -707,40 +707,38 @@ The answer is 42
 Completed in 1085 ms
 -->
 
-## Coroutine context and dispatchers
+## コルーチンコンテキストとディスパッチャー
 
-We've already seen `launch(CommonPool) {...}`, `async(CommonPool) {...}`, `run(NonCancellable) {...}`, etc.
-In these code snippets [CommonPool] and [NonCancellable] are _coroutine contexts_. 
-This section covers other available choices.
+私たちはすでに `launch(CommonPool) {...}` 、 `async(CommonPool) {...}` 、 `run(NonCancellable) {...}` などを見てきました。
+これらのコードスニペット[CommonPool]と[NonCancellable]は _コルーチンコンテキスト_ です。
+このセクションでは、その他の選択肢について説明します。
 
-### Dispatchers and threads
+### ディスパッチャーとスレッド
 
-Coroutine context includes a [_coroutine dispatcher_][CoroutineDispatcher] which determines what thread or threads 
-the corresponding coroutine uses for its execution. Coroutine dispatcher can confine coroutine execution 
-to a specific thread, dispatch it to a thread pool, or let it run unconfined. Try the following example:
+コルーチンコンテキストには、[_コルーチンディスパッチャ_][CoroutineDispatcher]が含まれており、対応するコルーチンが実行に使用するスレッド（単独または複数）を決定します。コルーチンディスパッチャは、コルーチンの実行を特定のスレッドに限定したり、スレッドプールにディスパッチしたり、制約なしで実行させたりすることができます。 次の例を試してください。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val jobs = arrayListOf<Job>()
-    jobs += launch(Unconfined) { // not confined -- will work with main thread
+    jobs += launch(Unconfined) { // 制約なし -- メインスレッドで動作する
         println(" 'Unconfined': I'm working in thread ${Thread.currentThread().name}")
     }
-    jobs += launch(context) { // context of the parent, runBlocking coroutine
+    jobs += launch(context) { // 親(runBlockingコルーチン)のコンテキスト
         println("    'context': I'm working in thread ${Thread.currentThread().name}")
     }
-    jobs += launch(CommonPool) { // will get dispatched to ForkJoinPool.commonPool (or equivalent)
+    jobs += launch(CommonPool) { // ForkJoinPool.commonPool(または同様なもの)にディスパッチされる
         println(" 'CommonPool': I'm working in thread ${Thread.currentThread().name}")
     }
-    jobs += launch(newSingleThreadContext("MyOwnThread")) { // will get its own new thread
+    jobs += launch(newSingleThreadContext("MyOwnThread")) { // 独自の新しいスレッドを取得
         println("     'newSTC': I'm working in thread ${Thread.currentThread().name}")
     }
     jobs.forEach { it.join() }
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-01.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-01.kt)で完全なコードを取得できます
 
-It produces the following output (maybe in different order):
+次の出力を生成します（おそらく異なる順序で）。
 
 ```text
  'Unconfined': I'm working in thread main
@@ -753,28 +751,27 @@ It produces the following output (maybe in different order):
 
 The difference between parent [context][CoroutineScope.context] and [Unconfined] context will be shown later.
 
-### Unconfined vs confined dispatcher
- 
-The [Unconfined] coroutine dispatcher starts coroutine in the caller thread, but only until the
-first suspension point. After suspension it resumes in the thread that is fully determined by the
-suspending function that was invoked. Unconfined dispatcher is appropriate when coroutine does not
-consume CPU time nor updates any shared data (like UI) that is confined to a specific thread. 
+親[コンテキスト][CoroutineScope.context]と[Unconfined]コンテキストの違いについては、後で説明します。
 
-On the other side, [context][CoroutineScope.context] property that is available inside the block of any coroutine 
-via [CoroutineScope] interface, is a reference to a context of this particular coroutine. 
-This way, a parent context can be inherited. The default context of [runBlocking], in particular,
-is confined to be invoker thread, so inheriting it has the effect of confining execution to
-this thread with a predictable FIFO scheduling.
+### 制約なし対制約ディスパッチャー
+ 
+[Unconfined]コルーチンディスパッチャは、最初の中断ポイントまで呼び出し元スレッドでコルーチンで実行します。
+中断後、呼び出されたサスペンド関数によって完全に決定されたスレッドで再開されます。
+コルーチンがCPU時間を消費しない場合や、特定のスレッドに限定された共有データ（UIなど）を更新しない場合、Unconfinedディスパッチャが適切です。
+
+一方、[CoroutineScope]インターフェースを介してコルーチンのブロック内で使用できる[コンテキスト][CoroutineScope.context]プロパティは、この特定のコルーチンのコンテキストへの参照です。
+このようにして、親コンテキストを継承することができます。
+特に、[runBlocking]のデフォルトコンテキストは呼び出し側スレッドに限定されているため、継承すると予測可能なFIFOスケジューリングを使用してこのスレッドに実行を限定するという効果があります。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val jobs = arrayListOf<Job>()
-    jobs += launch(Unconfined) { // not confined -- will work with main thread
+    jobs += launch(Unconfined) { // 制約なし -- メインスレッドで動作する
         println(" 'Unconfined': I'm working in thread ${Thread.currentThread().name}")
         delay(500)
         println(" 'Unconfined': After delay in thread ${Thread.currentThread().name}")
     }
-    jobs += launch(context) { // context of the parent, runBlocking coroutine
+    jobs += launch(context) { // 親(runBlockingコルーチン)のコンテキスト
         println("    'context': I'm working in thread ${Thread.currentThread().name}")
         delay(1000)
         println("    'context': After delay in thread ${Thread.currentThread().name}")
@@ -783,9 +780,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-02.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-02.kt)で完全なコードを取得できます
 
-Produces the output: 
+次のように出力します。
  
 ```text
  'Unconfined': I'm working in thread main
@@ -796,19 +793,16 @@ Produces the output:
 
 <!--- TEST LINES_START -->
  
-So, the coroutine that had inherited `context` of `runBlocking {...}` continues to execute in the `main` thread,
-while the unconfined one had resumed in the scheduler thread that [delay] function is using.
+このように、 `runBlocking {...}` コルーチンの `context` を継承したコルーチンは `main` スレッドで実行し続けますが、制約なしのほうはスレッドは[delay]関数が使用しているスケジューラスレッドで再開しました。
 
-### Debugging coroutines and threads
+### コルーチンとスレッドのデバッグ
 
-Coroutines can suspend on one thread and resume on another thread with [Unconfined] dispatcher or 
-with a multi-threaded dispatcher like [CommonPool]. Even with a single-threaded dispatcher it might be hard to
-figure out what coroutine was doing what, where, and when. The common approach to debugging applications with 
-threads is to print the thread name in the log file on each log statement. This feature is universally supported
-by logging frameworks. When using coroutines, the thread name alone does not give much of a context, so 
-`kotlinx.coroutines` includes debugging facilities to make it easier. 
+コルーチンは、[Unconfined]ディスパッチャまたは[CommonPool]のようなマルチスレッドディスパッチャを使用して、あるスレッドで中断し、別のスレッドで再開できます。
+シングルスレッドのディスパッチャであっても、コルーチンが何を、いつ、どこでやっていたのか把握するのは難しいかもしれません。
+スレッドを使用してアプリケーションをデバッグする一般的な方法は、ログファイルの各ログステートメントにスレッド名を出力することです。
+この機能は、ロギングフレームワークによって普遍的にサポートされています。 コルーチンを使用する場合、スレッド名だけではコンテキストの多くが得られないので、 `kotlinx.coroutines`にはデバッグ機能が組み込まれています。
 
-Run the following code with `-Dkotlinx.coroutines.debug` JVM option:
+`-Dkotlinx.coroutines.debug` JVMオプションを付けて次のコードを実行してください。
 
 ```kotlin
 fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")
@@ -826,12 +820,11 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-03.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-03.kt)で完全なコードを取得できます
 
-There are three coroutines. The main coroutine (#1) -- `runBlocking` one, 
-and two coroutines computing deferred values `a` (#2) and `b` (#3).
-They are all executing in the context of `runBlocking` and are confined to the main thread.
-The output of this code is:
+`runBlocking` のメインコルーチン（#1）と、遅延値を計算する2つのコルーチン `a` （#2）と、`b` （#3）の3つのコルーチンがあります。
+これらはすべて `runBlocking` のコンテキストで実行されており、メインスレッドに限定されています。
+このコードの出力は次のとおりです。
 
 ```text
 [main @coroutine#2] I'm computing a piece of the answer
@@ -841,15 +834,14 @@ The output of this code is:
 
 <!--- TEST -->
 
-The `log` function prints the name of the thread in square brackets and you can see, that it is the `main`
-thread, but the identifier of the currently executing coroutine is appended to it. This identifier 
-is consecutively assigned to all created coroutines when debugging mode is turned on.
+`log` 関数はスレッドの名前を角括弧でプリントし、`main` スレッドであることがわかりますが、現在実行中のコルーチンの識別子が追加されています。
+この識別子は、デバッグモードがオンのときに、作成されたすべてのコルーチンに連続して割り当てられます。
 
-You can read more about debugging facilities in the documentation for [newCoroutineContext] function.
+デバッグ機能の詳細については、[newCoroutineContext]関数のドキュメントを参照してください。
 
-### Jumping between threads
+### スレッド間のジャンプ
 
-Run the following code with `-Dkotlinx.coroutines.debug` JVM option:
+`-Dkotlinx.coroutines.debug` JVMオプションで次のコードを実行してください。
 
 ```kotlin
 fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")
@@ -867,11 +859,10 @@ fun main(args: Array<String>) {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-04.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-04.kt)で完全なコードを取得できます
 
-It demonstrates two new techniques. One is using [runBlocking] with an explicitly specified context, and
-the second one is using [run] function to change a context of a coroutine while still staying in the 
-same coroutine as you can see in the output below:
+これは2つの新しいテクニックを実証しています。
+1つは明示的に指定されたコンテキストで[runBlocking]を使用し、もう1つは[run]関数を使用してコルーチンのコンテキストを変更しながら、同じコルーチンにとどまることが以下の出力でわかります。
 
 ```text
 [Ctx1 @coroutine#1] Started in ctx1
@@ -881,10 +872,10 @@ same coroutine as you can see in the output below:
 
 <!--- TEST -->
 
-### Job in the context
+### コンテキストにおけるジョブ
 
-The coroutine [Job] is part of its context. The coroutine can retrieve it from its own context 
-using `context[Job]` expression:
+コルーチンの[Job]はそのコンテキストの一部です。
+コルーチンは `context[Job]` 式を使ってそれ自身のコンテキストから取り出すことができます。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -892,9 +883,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-05.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-05.kt)で完全なコードを取得できます
 
-It produces somethine like
+これは次のようなものを生成します
 
 ```
 My job is BlockingCoroutine{Active}@65ae6ba4
@@ -902,45 +893,43 @@ My job is BlockingCoroutine{Active}@65ae6ba4
 
 <!--- TEST lines.size == 1 && lines[0].startsWith("My job is BlockingCoroutine{Active}@") -->
 
-So, [isActive][CoroutineScope.isActive] in [CoroutineScope] is just a convenient shortcut for `context[Job]!!.isActive`.
+[CoroutineScope]の[isActive][CoroutineScope.isActive]は `context[Job]!!.isActive` の便利なショートカットです。
 
-### Children of a coroutine
+### コルーチンの子
 
-When [context][CoroutineScope.context] of a coroutine is used to launch another coroutine, 
-the [Job] of the new coroutine becomes
-a _child_ of the parent coroutine's job. When the parent coroutine is cancelled, all its children
-are recursively cancelled, too. 
+コルーチンの[context][CoroutineScope.context]を使用して別のコルーチンを起動すると、新しいコルーチンの[Job]は親コルーチンのジョブの _子_ になります。
+親コルーチンがキャンセルされると、すべての子が再帰的にキャンセルされます。
   
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    // start a coroutine to process some kind of incoming request
+    // 何らかのリクエストを処理するためにコルーチンを開始する
     val request = launch(CommonPool) {
-        // it spawns two other jobs, one with its separate context
+        // 他の2つのジョブが生成される。1つは別のコンテキスト
         val job1 = launch(CommonPool) {
             println("job1: I have my own context and execute independently!")
             delay(1000)
             println("job1: I am not affected by cancellation of the request")
         }
-        // and the other inherits the parent context
+        // もう一方は親コンテキストを継承する
         val job2 = launch(context) {
             println("job2: I am a child of the request coroutine")
             delay(1000)
             println("job2: I will not execute this line if my parent request is cancelled")
         }
-        // request completes when both its sub-jobs complete:
+        // 両方のサブジョブが完了したらリクエストは完了
         job1.join()
         job2.join()
     }
     delay(500)
-    request.cancel() // cancel processing of the request
-    delay(1000) // delay a second to see what happens
+    request.cancel() // リクエストの処理をキャンセル
+    delay(1000) // 何が起こるか確かめるために1秒遅らせる
     println("main: Who has survived request cancellation?")
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-06.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-06.kt)で完全なコードを取得できます
 
-The output of this code is:
+このコードの出力は以下の通りです。
 
 ```text
 job1: I have my own context and execute independently!
@@ -951,34 +940,34 @@ main: Who has survived request cancellation?
 
 <!--- TEST -->
 
-### Combining contexts
+### コンテキストの結合
 
-Coroutine context can be combined using `+` operator. The context on the right-hand side replaces relevant entries
-of the context on the left-hand side. For example, a [Job] of the parent coroutine can be inherited, while 
-its dispatcher replaced:
+コルーチンのコンテキストは、 `+` 演算子を使って組み合わせることができます。
+右側のコンテキストは、左側のコンテキストの関連エントリを置き換えます。
+たとえば、親コルーチンの[Job]は継承でき、ディスパッチャは次のように置き換えられます。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    // start a coroutine to process some kind of incoming request
-    val request = launch(context) { // use the context of `runBlocking`
-        // spawns CPU-intensive child job in CommonPool !!! 
+    // 何らかのリクエストを処理するためにコルーチンを開始する
+    val request = launch(context) { // `runBlocking` のコンテキストを使う
+        // CommonPoolでCPU集約型の子ジョブを生成する !!!
         val job = launch(context + CommonPool) {
             println("job: I am a child of the request coroutine, but with a different dispatcher")
             delay(1000)
             println("job: I will not execute this line if my parent request is cancelled")
         }
-        job.join() // request completes when its sub-job completes
+        job.join() // サブジョブが完了したらリクエストは完了
     }
     delay(500)
-    request.cancel() // cancel processing of the request
-    delay(1000) // delay a second to see what happens
+    request.cancel() // リクエストの処理をキャンセル
+    delay(1000) // 何が起こるか確かめるために1秒遅らせる
     println("main: Who has survived request cancellation?")
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-07.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-07.kt)で完全なコードを取得できます
 
-The expected outcome of this code is: 
+このコードの予想される結果は次のとおりです。
 
 ```text
 job: I am a child of the request coroutine, but with a different dispatcher
@@ -987,22 +976,21 @@ main: Who has survived request cancellation?
 
 <!--- TEST -->
 
-### Naming coroutines for debugging
+### デバッグのためのコルーチンの命名
 
-Automatically assigned ids are good when coroutines log often and you just need to correlate log records
-coming from the same coroutine. However, when coroutine is tied to the processing of a specific request
-or doing some specific background task, it is better to name it explicitly for debugging purposes.
-[CoroutineName] serves the same function as a thread name. It'll get displayed in the thread name that
-is executing this coroutine when debugging more is turned on.
+コルーチンが頻繁にログを記録し、同じコルーチンからのログレコードを相関させるだけでよい場合は、自動的に割り当てられたIDが有効です。
+しかし、コルーチンが特定の要求の処理や特定のバックグラウンドタスクの処理に縛られている場合は、デバッグの目的で明示的に名前を付ける方がよいでしょう。
+[CoroutineName]はスレッド名と同じ機能を果たします。
+これは、デバッグが有効になっているときにこのコルーチンを実行しているスレッド名に表示されます。
 
-The following example demonstrates this concept:
+次の例は、この概念を示しています。
 
 ```kotlin
 fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")
 
 fun main(args: Array<String>) = runBlocking(CoroutineName("main")) {
     log("Started main coroutine")
-    // run two background value computations
+    // 2つのバックグラウンド値の計算を実行する
     val v1 = async(CommonPool + CoroutineName("v1coroutine")) {
         log("Computing v1")
         delay(500)
@@ -1017,9 +1005,10 @@ fun main(args: Array<String>) = runBlocking(CoroutineName("main")) {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-08.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-08.kt)で完全なコードを取得できます
 
 The output it produces with `-Dkotlinx.coroutines.debug` JVM option is similar to:
+`-Dkotlinx.coroutines.debug` JVMオプションで出力される結果は次のようになります。
  
 ```text
 [main @main#1] Started main coroutine
@@ -1030,7 +1019,7 @@ The output it produces with `-Dkotlinx.coroutines.debug` JVM option is similar t
 
 <!--- TEST FLEXIBLE_THREAD -->
 
-### Cancellation via explicit job
+### 明示的なジョブによるキャンセル
 
 Let us put our knowledge about contexts, children and jobs together. Assume that our application has
 an object with a lifecycle, but that object is not a coroutine. For example, we are writing an Android application
@@ -1043,28 +1032,46 @@ the lifecycle of our activity. A job instance is created using [Job()][Job.invok
 as the following example shows. We need to make sure that all the coroutines are started 
 with this job in their context and then a single invocation of [Job.cancel] terminates them all.
 
+Let us put our knowledge about contexts, children and jobs together. 
+Assume that our application has an object with a lifecycle, but that object is not a coroutine. 
+For example, we are writing an Android application and launch various coroutines in the context of an Android activity to perform asynchronous operations to fetch and update data, do animations, etc. 
+All of these coroutines must be cancelled when activity is destroyed to avoid memory leaks. 
+  
+We can manage a lifecycle of our coroutines by creating an instance of [Job] that is tied to the lifecycle of our activity. 
+A job instance is created using [Job()][Job.invoke] factory function as the following example shows. 
+We need to make sure that all the coroutines are started with this job in their context and then a single invocation of [Job.cancel] terminates them all.
+
+コンテキスト、子、ジョブに関する知識をまとめてみましょう。
+アプリケーションにライフサイクルを持つオブジェクトがあるとしますが、そのオブジェクトはコルーチンではありません。
+たとえば、Androidアプリケーションを作成し、Androidアクティビティのコンテキストでさまざまなコルーチンを起動して、データのフェッチや更新、アニメーションなどの非同期操作を実行します。
+メモリリークを避けるためにアクティビティが破棄されると、これらのコルーチンはすべてキャンセルされなければなりません。
+
+アクティビティのライフサイクルに結びついた[ジョブ]のインスタンスを作成することで、コルーチンのライフサイクルを管理することができます。
+次の例に示すように、[Job()] [Job.invoke]ファクトリ関数を使用してジョブインスタンスが作成されます。
+すべてのコルーチンがコンテキスト内でこのジョブで開始されていることを確認してから、[Job.cancel]を1回呼び出すとすべて終了します。
+
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val job = Job() // create a job object to manage our lifecycle
-    // now launch ten coroutines for a demo, each working for a different time
+    val job = Job() // ライフサイクルを管理するジョブオブジェクトを作成する
+    // デモ用に10個のコルーチンを起動し、それぞれ別の時間に動作する
     val coroutines = List(10) { i ->
-        // they are all children of our job object
-        launch(context + job) { // we use the context of main runBlocking thread, but with our own job object 
-            delay(i * 200L) // variable delay 0ms, 200ms, 400ms, ... etc
+        // これらはすべてジョブオブジェクトの子
+        launch(context + job) { // メインrunBlockingスレッドのコンテキストを使用しますが、独自のジョブオブジェクトを使用します
+            delay(i * 200L) // 可変の遅延 0ms, 200ms, 400ms, ... など
             println("Coroutine $i is done")
         }
     }
     println("Launched ${coroutines.size} coroutines")
-    delay(500L) // delay for half a second
+    delay(500L) // 0.5秒遅延する
     println("Cancelling job!")
-    job.cancel() // cancel our job.. !!!
-    delay(1000L) // delay for more to see if our coroutines are still working
+    job.cancel() // ジョブをキャンセル.. !!!
+    delay(1000L) // コルーチンがまだ動作中かどうかを確かめるためにさらに遅延する
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-09.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-09.kt)で完全なコードを取得できます
 
-The output of this example is:
+この例の出力は次の通り
 
 ```text
 Launched 10 coroutines
@@ -1076,10 +1083,8 @@ Cancelling job!
 
 <!--- TEST -->
 
-As you can see, only the first three coroutines had printed a message and the others were cancelled 
-by a single  invocation of `job.cancel()`. So all we need to do in our hypothetical Android 
-application is to create a parent job object when activity is created, use it for child coroutines,
-and cancel it when activity is destroyed.
+ご覧のように、最初の3つのコルーチンだけがメッセージを出力し、他は `job.cancel()` の1回の呼び出しでキャンセルされました。
+したがって、私たちが仮定しているAndroidアプリケーションでは、アクティビティが作成されたときに親ジョブオブジェクトを作成し、それを子コルーチンに使用し、アクティビティが破棄されたときにキャンセルするだけです。
 
 ## Channels
 
