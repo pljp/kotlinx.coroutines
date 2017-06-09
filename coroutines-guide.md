@@ -75,13 +75,13 @@ class GuideTest {
   * [明示的なジョブによるキャンセル](#明示的なジョブによるキャンセル)
 * [チャネル](#チャネル)
   * [チャネルの基礎](#チャネルの基礎)
-  * [チャネルでのクローズと反復](#チャネルでのクローズと反復)
-  * [チャネルプロデューサの作成](#チャネルプロデューサの作成)
+  * [チャネルのクローズと反復](#チャネルのクローズと反復)
+  * [チャネルプロデューサーの作成](#チャネルプロデューサーの作成)
   * [パイプライン](#パイプライン)
   * [パイプラインによる素数](#パイプラインによる素数)
-  * [出力数](#出力数)
-  * [入力数](#入力数)
-  * [バッファされたチャネル](#バッファされたチャネル)
+  * [論理出力数](#論理出力数)
+  * [論理入力数](#論理入力数)
+  * [バッファーされたチャネル](#バッファーされたチャネル)
   * [チャネルは公正](#チャネルは公正)
 * [共有されたミュータブルステートと並行性](#共有されたミュータブルステートと並行性)
   * [問題](#問題)
@@ -1021,26 +1021,6 @@ The output it produces with `-Dkotlinx.coroutines.debug` JVM option is similar t
 
 ### 明示的なジョブによるキャンセル
 
-Let us put our knowledge about contexts, children and jobs together. Assume that our application has
-an object with a lifecycle, but that object is not a coroutine. For example, we are writing an Android application
-and launch various coroutines in the context of an Android activity to perform asynchronous operations to fetch 
-and update data, do animations, etc. All of these coroutines must be cancelled when activity is destroyed
-to avoid memory leaks. 
-  
-We can manage a lifecycle of our coroutines by creating an instance of [Job] that is tied to 
-the lifecycle of our activity. A job instance is created using [Job()][Job.invoke] factory function
-as the following example shows. We need to make sure that all the coroutines are started 
-with this job in their context and then a single invocation of [Job.cancel] terminates them all.
-
-Let us put our knowledge about contexts, children and jobs together. 
-Assume that our application has an object with a lifecycle, but that object is not a coroutine. 
-For example, we are writing an Android application and launch various coroutines in the context of an Android activity to perform asynchronous operations to fetch and update data, do animations, etc. 
-All of these coroutines must be cancelled when activity is destroyed to avoid memory leaks. 
-  
-We can manage a lifecycle of our coroutines by creating an instance of [Job] that is tied to the lifecycle of our activity. 
-A job instance is created using [Job()][Job.invoke] factory function as the following example shows. 
-We need to make sure that all the coroutines are started with this job in their context and then a single invocation of [Job.cancel] terminates them all.
-
 コンテキスト、子、ジョブに関する知識をまとめてみましょう。
 アプリケーションにライフサイクルを持つオブジェクトがあるとしますが、そのオブジェクトはコルーチンではありません。
 たとえば、Androidアプリケーションを作成し、Androidアクティビティのコンテキストでさまざまなコルーチンを起動して、データのフェッチや更新、アニメーションなどの非同期操作を実行します。
@@ -1086,37 +1066,35 @@ Cancelling job!
 ご覧のように、最初の3つのコルーチンだけがメッセージを出力し、他は `job.cancel()` の1回の呼び出しでキャンセルされました。
 したがって、私たちが仮定しているAndroidアプリケーションでは、アクティビティが作成されたときに親ジョブオブジェクトを作成し、それを子コルーチンに使用し、アクティビティが破棄されたときにキャンセルするだけです。
 
-## Channels
+## チャネル
 
-Deferred values provide a convenient way to transfer a single value between coroutines.
-Channels provide a way to transfer a stream of values.
+遅延値は、コルーチン間で単一の値を転送する便利な方法を提供します。
+チャネルは、ストリーム値を転送する方法を提供します。
 
 <!--- INCLUDE .*/example-channel-([0-9]+).kt
 import kotlinx.coroutines.experimental.channels.*
 -->
 
-### Channel basics
+### チャネルの基礎
 
-A [Channel] is conceptually very similar to `BlockingQueue`. One key difference is that
-instead of a blocking `put` operation it has a suspending [send][SendChannel.send], and instead of 
-a blocking `take` operation it has a suspending [receive][ReceiveChannel.receive].
+[Channel]は概念的には `BlockingQueue` に非常によく似ています。主な違いの1つは、ブロックする `put` 操作の代わりにサスペンド[send][SendChannel.send]、ブロックする `take` 操作の代わりにサスペンド[receive][ReceiveChannel.receive]を持っていることです。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val channel = Channel<Int>()
     launch(CommonPool) {
-        // this might be heavy CPU-consuming computation or async logic, we'll just send five squares
+        // これはCPU使用量が多い計算や非同期ロジックかもしれないが、ここではただ5つの平方を送るだけ
         for (x in 1..5) channel.send(x * x)
     }
-    // here we print five received integers:
+    // ここで受け取った5つの整数をプリントする
     repeat(5) { println(channel.receive()) }
     println("Done!")
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-01.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-01.kt)で完全なコードを取得できます
 
-The output of this code is:
+このコードの出力は以下の通りです。
 
 ```text
 1
@@ -1129,30 +1107,28 @@ Done!
 
 <!--- TEST -->
 
-### Closing and iteration over channels 
+### チャネルのクローズと反復
 
-Unlike a queue, a channel can be closed to indicate that no more elements are coming. 
-On the receiver side it is convenient to use a regular `for` loop to receive elements 
-from the channel. 
- 
-Conceptually, a [close][SendChannel.close] is like sending a special close token to the channel. 
-The iteration stops as soon as this close token is received, so there is a guarantee 
-that all previously sent elements before the close are received:
+キューとは異なり、チャネルは閉じることによってそれ以上エレメントが来ないことを示すことができます。
+受信側では、通常の `for` ループを使用してチャネルから要素を受け取ると便利です。
+
+概念的には、[close][SendChannel.close]は特別なクローズトークンをチャネルに送信するようなものです。
+このクローズトークンが受信されるとすぐに反復が停止し、クローズする前に以前に送信されたすべての要素が受信されるという保証があります。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val channel = Channel<Int>()
     launch(CommonPool) {
         for (x in 1..5) channel.send(x * x)
-        channel.close() // we're done sending
+        channel.close() // 送信完了
     }
-    // here we print received values using `for` loop (until the channel is closed)
+    // ここでは `for` ループを使って受け取った値をプリントします（チャンネルが閉じられるまで）
     for (y in channel) println(y)
     println("Done!")
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-02.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-02.kt)で完全なコードを取得できます
 
 <!--- TEST 
 1
@@ -1163,15 +1139,13 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 Done!
 -->
 
-### Building channel producers
+### チャネルプロデューサーの作成
 
-The pattern where a coroutine is producing a sequence of elements is quite common. 
-This is a part of _producer-consumer_ pattern that is often found in concurrent code. 
-You could abstract such a producer into a function that takes channel as its parameter, but this goes contrary
-to common sense that results must be returned from functions. 
+コルーチンが要素のシーケンスを生成するパターンはかなり一般的です。
+これは _プロデューサー - コンシューマー_ パターンの一部であり、コンカレントコードでよく見られます。
+そのようなプロデューサーを、パラメータとしてchannelをとる関数に抽象化することはできますが、結果は関数から返さなければならないという常識とは逆になります。
 
-There is a convenience coroutine builder named [produce] that makes it easy to do it right on producer side,
-and an extension function [consumeEach], that can replace a `for` loop on the consumer side:
+プロデューサ側で簡単に行うことを容易にする[produce]という便利なコルーチンビルダーと、コンシューマ側の `for` ループを置き換えることができる拡張関数[consumeEach]があります。
 
 ```kotlin
 fun produceSquares() = produce<Int>(CommonPool) {
@@ -1185,7 +1159,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-03.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-03.kt)で完全なコードを取得できます
 
 <!--- TEST 
 1
@@ -1196,19 +1170,19 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 Done!
 -->
 
-### Pipelines
+### パイプライン
 
-Pipeline is a pattern where one coroutine is producing, possibly infinite, stream of values:
+パイプラインは、1つのコルーチンが無限の値のストリームを生成しているパターンです。
 
 ```kotlin
 fun produceNumbers() = produce<Int>(CommonPool) {
     var x = 1
-    while (true) send(x++) // infinite stream of integers starting from 1
+    while (true) send(x++) // 1から始まる整数の無限ストリーム
 }
 ```
 
-And another coroutine or coroutines are consuming that stream, doing some processing, and producing some other results.
-In the below example the numbers are just squared:
+そして、別のコルーチンはそのストリームを消費し、いくつかの処理を行い、他の結果を生成しています。
+以下の例では、数値は単に二乗されます。
 
 ```kotlin
 fun square(numbers: ReceiveChannel<Int>) = produce<Int>(CommonPool) {
@@ -1216,20 +1190,20 @@ fun square(numbers: ReceiveChannel<Int>) = produce<Int>(CommonPool) {
 }
 ```
 
-The main code starts and connects the whole pipeline:
+メインコードはパイプライン全体を開始し接続します。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val numbers = produceNumbers() // produces integers from 1 and on
-    val squares = square(numbers) // squares integers
-    for (i in 1..5) println(squares.receive()) // print first five
-    println("Done!") // we are done
-    squares.cancel() // need to cancel these coroutines in a larger app
+    val numbers = produceNumbers() // 1からの整数を生成する
+    val squares = square(numbers) // 整数を平方にする
+    for (i in 1..5) println(squares.receive()) // 最初の5つをプリントする
+    println("Done!") // 完了
+    squares.cancel() // より大きなアプリではこれらのコルーチンをキャンセルする必要があります
     numbers.cancel()
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-04.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-04.kt)で完全なコードを取得できます
 
 <!--- TEST 
 1
@@ -1240,17 +1214,12 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 Done!
 -->
 
-We don't have to cancel these coroutines in this example app, because
-[coroutines are like daemon threads](#coroutines-are-like-daemon-threads), 
-but in a larger app we'll need to stop our pipeline if we don't need it anymore.
-Alternatively, we could have run pipeline coroutines as 
-[children of a coroutine](#children-of-a-coroutine).
+[コルーチンはデーモンスレッドに似ている](#コルーチンはデーモンスレッドに似ている)ため、このサンプルアプリケーションではこれらのコルーチンをキャンセルする必要はありませんが、より大きなアプリケーションではパイプラインが必要なくなった場合に停止する必要があります。
+あるいは、パイプラインコルーチンを[コルーチンの子](#コルーチンの子)として実行することもできます。
 
-### Prime numbers with pipeline
+### パイプラインによる素数
 
-Let's take pipelines to the extreme with an example that generates prime numbers using a pipeline 
-of coroutines. We start with an infinite sequence of numbers. This time we introduce an 
-explicit context parameter, so that caller can control where our coroutines run:
+コルーチンのパイプラインを使って素数を生成する例を使って、パイプラインを徹底的に見てみましょう。無限の数列から始めます。今回は明示的なコンテキストパラメータを導入して、呼び出し元がコルーチンの実行を制御できるようにします。
  
 <!--- INCLUDE kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-05.kt  
 import kotlin.coroutines.experimental.CoroutineContext
@@ -1263,8 +1232,7 @@ fun numbersFrom(context: CoroutineContext, start: Int) = produce<Int>(context) {
 }
 ```
 
-The following pipeline stage filters an incoming stream of numbers, removing all the numbers 
-that are divisible by the given prime number:
+次のパイプラインステージでは、入力数列をフィルタリングして、指定された素数で割り切れるすべての数値を削除します。
 
 ```kotlin
 fun filter(context: CoroutineContext, numbers: ReceiveChannel<Int>, prime: Int) = produce<Int>(context) {
@@ -1272,15 +1240,13 @@ fun filter(context: CoroutineContext, numbers: ReceiveChannel<Int>, prime: Int) 
 }
 ```
 
-Now we build our pipeline by starting a stream of numbers from 2, taking a prime number from the current channel, 
-and launching new pipeline stage for each prime number found:
+2からの数列を開始し、現在のチャネルから素数を取り出し、見つかった各素数に対して新しいパイプラインステージを開始することでパイプラインを構築します。
  
 ```
 numbersFrom(2) -> filter(2) -> filter(3) -> filter(5) -> filter(7) ... 
 ``` 
  
-The following example prints the first ten prime numbers, 
-running the whole pipeline in the context of the main thread:
+次の例では最初の10個の素数を出力し、パイプライン全体をメインスレッドのコンテキストで実行します。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -1293,9 +1259,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-05.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-05.kt)で完全なコードを取得できます
 
-The output of this code is:
+このコードの出力です。
 
 ```text
 2
@@ -1312,35 +1278,28 @@ The output of this code is:
 
 <!--- TEST -->
 
-Note, that you can build the same pipeline using `buildIterator` coroutine builder from the standard library. 
-Replace `produce` with `buildIterator`, `send` with `yield`, `receive` with `next`, 
-`ReceiveChannel` with `Iterator`, and get rid of the context. You will not need `runBlocking` either.
-However, the benefit of a pipeline that uses channels as shown above is that it can actually use 
-multiple CPU cores if you run it in [CommonPool] context.
+標準ライブラリの `buildIterator` コルーチンビルダーを使って同じパイプラインを構築できることに留意してください。
+`produce` を `buildIterator`、 `send` を `yield`、 `receive` を `next`、 `ReceiveChannel` を `Iterator` で置き換え、コンテキストを取り除きます。 `runBlocking` も必要ありません。
+ただし、上記のようなチャネルを使用するパイプラインの利点は、[CommonPool]コンテキストで実行すると実際に複数のCPUコアを使用できることです。
 
-Anyway, this is an extremely impractical way to find prime numbers. In practice, pipelines do involve some
-other suspending invocations (like asynchronous calls to remote services) and these pipelines cannot be
-built using `buildSeqeunce`/`buildIterator`, because they do not allow arbitrary suspension, unlike
-`produce` which is fully asynchronous.
+とにかく、これは素数を見つけるには非常に非実用的な方法です。 実際にはパイプラインは（リモートサービスへの非同期呼び出しのような）いくつかの他のサスペンド呼び出しを必要とします。これらのパイプラインは完全に非同期の `produce` とは異なり任意の中断を許さないため、`buildSeqeunce` / `buildIterator` を使用して構築することはできません。
  
-### Fan-out
+### 論理出力数
 
-Multiple coroutines may receive from the same channel, distributing work between themselves.
-Let us start with a producer coroutine that is periodically producing integers 
-(ten numbers per second):
+複数のコルーチンが同じチャネルから受信し、それらの間で作業を分散することがあります。
+定期的に整数（毎秒10個の数値）を生成するプロデューサーコルーチンから始めましょう。
 
 ```kotlin
 fun produceNumbers() = produce<Int>(CommonPool) {
-    var x = 1 // start from 1
+    var x = 1 // 1から始める
     while (true) {
-        send(x++) // produce next
-        delay(100) // wait 0.1s
+        send(x++) // 次を生成
+        delay(100) // 0.1秒待つ
     }
 }
 ```
 
-Then we can have several processor coroutines. In this example, they just print their id and
-received number:
+いくつかのプロセッサコルーチンを持つことができます。この例では、IDと受け取った数値をプリントします。
 
 ```kotlin
 fun launchProcessor(id: Int, channel: ReceiveChannel<Int>) = launch(CommonPool) {
@@ -1350,7 +1309,7 @@ fun launchProcessor(id: Int, channel: ReceiveChannel<Int>) = launch(CommonPool) 
 }
 ```
 
-Now let us launch five processors and let them work for a second. See what happens:
+今度は5つのプロセッサを起動して、1秒間動作させましょう。何が起こるか確かめてください。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -1361,10 +1320,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-06.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-06.kt)で完全なコードを取得できます
 
-The output will be similar to the the following one, albeit the processor ids that receive
-each specific integer may be different:
+プロセッサIDとして受け取るそれぞれの固有の整数は異なる可能性がありますが、出力は次のようになります。
 
 ```
 Processor #2 received 1
@@ -1381,14 +1339,12 @@ Processor #3 received 10
 
 <!--- TEST lines.size == 10 && lines.withIndex().all { (i, line) -> line.startsWith("Processor #") && line.endsWith(" received ${i + 1}") } -->
 
-Note, that cancelling a producer coroutine closes its channel, thus eventually terminating iteration
-over the channel that processor coroutines are doing.
+プロデューサのコルーチンをキャンセルするとそのチャネルが閉じられ、最終的にプロセッサのコルーチンが行っているチャネルでの繰り返しが終了することに注意してください。
 
-### Fan-in
+### 論理入力数
 
-Multiple coroutines may send to the same channel.
-For example, let us have a channel of strings, and a suspending function that 
-repeatedly sends a specified string to this channel with a specified delay:
+複数のコルーチンが同じチャネルに送信することがあります。
+たとえば、文字列のチャンネルと、指定された文字列を指定された遅延でこのチャンネルに繰り返し送信するサスペンド関数を持っています。
 
 ```kotlin
 suspend fun sendString(channel: SendChannel<String>, s: String, time: Long) {
@@ -1399,8 +1355,7 @@ suspend fun sendString(channel: SendChannel<String>, s: String, time: Long) {
 }
 ```
 
-Now, let us see what happens if we launch a couple of coroutines sending strings 
-(in this example we launch them in the context of the main thread):
+さて、文字列を送信するコルーチンをいくつか起動するとどうなるか見てみましょう（この例ではメインスレッドのコンテキストで起動します）。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -1413,9 +1368,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-07.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-07.kt)で完全なコードを取得できます
 
-The output is:
+出力は、
 
 ```text
 foo
@@ -1428,35 +1383,31 @@ BAR!
 
 <!--- TEST -->
 
-### Buffered channels
+### バッファーされたチャネル
 
-The channels shown so far had no buffer. Unbuffered channels transfer elements when sender and receiver 
-meet each other (aka rendezvous). If send is invoked first, then it is suspended until receive is invoked, 
-if receive is invoked first, it is suspended until send is invoked.
+今までに示されたチャンネルにはバッファーがありませんでした。 バッファーされていないチャネルは、送信側と受信側がお互いに出会ったときに要素を転送します（別名ランデブー）。 sendが最初に呼び出された場合、receiveが呼び出されるまで中断されます。receiveが最初に呼び出された場合、sendが呼び出されるまで中断されます。
 
-Both [Channel()][Channel.invoke] factory function and [produce] builder take an optional `capacity` parameter to 
-specify _buffer size_. Buffer allows senders to send multiple elements before suspending, 
-similar to the `BlockingQueue` with a specified capacity, which blocks when buffer is full.
+[Channel()] [Channel.invoke]ファクトリ関数と[produce]ビルダーは、_バッファーサイズ_ を指定するためのオプションの `capacity` パラメータをとります。 バッファーは、指定された容量を持つ `BlockingQueue` と同様に、送信側が中断する前に複数の要素を送信できるようにします。これはバッファーがいっぱいになるとブロックします。
 
-Take a look at the behavior of the following code:
+次のコードの動作を見てみましょう。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val channel = Channel<Int>(4) // create buffered channel
-    launch(context) { // launch sender coroutine
+    val channel = Channel<Int>(4) // バッファーされたチャネルを作る
+    launch(context) { // 送信側コルーチンを起動
         repeat(10) {
-            println("Sending $it") // print before sending each element
-            channel.send(it) // will suspend when buffer is full
+            println("Sending $it") // 各要素を送信する前にプリント
+            channel.send(it) // バッファーがいっぱいになったら中断する
         }
     }
-    // don't receive anything... just wait....
+    // 何も受け取らずに待つ...
     delay(1000)
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-08.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-08.kt)で完全なコードを取得できます
 
-It prints "sending" _five_ times using a buffered channel with capacity of _four_:
+これは容量 _4_ のバッファーされたチャンネルを使って _5_ 回 "sending"を表示します。
 
 ```text
 Sending 0
@@ -1468,43 +1419,47 @@ Sending 4
 
 <!--- TEST -->
 
-The first four elements are added to the buffer and the sender suspends when trying to send the fifth one.
+最初の4つの要素はバッファに追加され、5番目の要素を送信しようとすると送信側は中断します。
 
 
-### Channels are fair
+### チャネルは公正
 
 Send and receive operations to channels are _fair_ with respect to the order of their invocation from 
 multiple coroutines. They are served in first-in first-out order, e.g. the first coroutine to invoke `receive` 
 gets the element. In the following example two coroutines "ping" and "pong" are 
 receiving the "ball" object from the shared "table" channel. 
 
+Send and receive operations to channels are _fair_ with respect to the order of their invocation from multiple coroutines. They are served in first-in first-out order, e.g. the first coroutine to invoke `receive` gets the element. In the following example two coroutines "ping" and "pong" are receiving the "ball" object from the shared "table" channel. 
+
+チャネルへの操作の送信と受信は、複数のコルーチンからの呼び出しの順番に関して _公正_ です。 
+それらはファーストイン・ファーストアウトの順序で提供されます。例えば `receive` を呼び出す最初のコルーチンは要素を取得します。
+次の例では、2つのコルーチン"ping"と"pong"が共有"table"チャネルから"ball"オブジェクトを受け取ります。
+
 ```kotlin
 data class Ball(var hits: Int)
 
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val table = Channel<Ball>() // a shared table
+    val table = Channel<Ball>() // 共有テーブル
     launch(context) { player("ping", table) }
     launch(context) { player("pong", table) }
-    table.send(Ball(0)) // serve the ball
-    delay(1000) // delay 1 second
-    table.receive() // game over, grab the ball
+    table.send(Ball(0)) // ボールを供給する
+    delay(1000) // 1秒遅らせる
+    table.receive() // ゲームオーバー。ボールを掴む
 }
 
 suspend fun player(name: String, table: Channel<Ball>) {
-    for (ball in table) { // receive the ball in a loop
+    for (ball in table) { // ループでボールを受け取る
         ball.hits++
         println("$name $ball")
-        delay(300) // wait a bit
-        table.send(ball) // send the ball back
+        delay(300) // 少し待つ
+        table.send(ball) // ボールを戻す
     }
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-09.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-09.kt)で完全なコードを取得できます
 
-The "ping" coroutine is started first, so it is the first one to receive the ball. Even though "ping"
-coroutine immediately starts receiving the ball again after sending it back to the table, the ball gets
-received by the "pong" coroutine, because it was already waiting for it:
+"ping"コルーチンが最初に開始されるので、ボールを受け取るのは最初のコルーチンです。 "ping"コルーチンは、ボールをテーブルに戻した後すぐに再びボールを受け取るようになっていますが、ボールは既に受信を待っていた"pong"コルーチンによって受信さます。
 
 ```text
 ping Ball(hits=1)
