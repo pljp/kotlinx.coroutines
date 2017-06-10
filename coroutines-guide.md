@@ -83,12 +83,12 @@ class GuideTest {
   * [論理入力数](#論理入力数)
   * [バッファーされたチャネル](#バッファーされたチャネル)
   * [チャネルは公正](#チャネルは公正)
-* [共有されたミュータブルステートと並行性](#共有されたミュータブルステートと並行性)
+* [共有ミュータブルステートと並行性](#共有ミュータブルステートと並行性)
   * [問題](#問題)
   * [Volatileは助けにならない](#Volatileは助けにならない)
   * [スレッドセーフなデータ構造](#スレッドセーフなデータ構造)
-  * [細かい処理のスレッドへの閉じ込め](#細かい処理のスレッドへの閉じ込め)
-  * [粗粒の処理のスレッドへの閉じ込め](#粗粒の処理のスレッドへの閉じ込め)
+  * [細粒度のスレッド拘束](#細粒度のスレッド拘束)
+  * [粗粒度のスレッド拘束](#粗粒度のスレッド拘束)
   * [排他制御](#排他制御)
   * [アクター](#アクター)
 * [セレクト式](#セレクト式)
@@ -1007,7 +1007,6 @@ fun main(args: Array<String>) = runBlocking(CoroutineName("main")) {
 
 > [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-08.kt)で完全なコードを取得できます
 
-The output it produces with `-Dkotlinx.coroutines.debug` JVM option is similar to:
 `-Dkotlinx.coroutines.debug` JVMオプションで出力される結果は次のようになります。
  
 ```text
@@ -1407,7 +1406,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 > [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-08.kt)で完全なコードを取得できます
 
-これは容量 _4_ のバッファーされたチャンネルを使って _5_ 回 "sending"を表示します。
+これは容量 _4_ のバッファーされたチャネルを使って _5_ 回 "sending"を表示します。
 
 ```text
 Sending 0
@@ -1419,17 +1418,10 @@ Sending 4
 
 <!--- TEST -->
 
-最初の4つの要素はバッファに追加され、5番目の要素を送信しようとすると送信側は中断します。
+最初の4つの要素はバッファーに追加され、5番目の要素を送信しようとすると送信側は中断します。
 
 
 ### チャネルは公正
-
-Send and receive operations to channels are _fair_ with respect to the order of their invocation from 
-multiple coroutines. They are served in first-in first-out order, e.g. the first coroutine to invoke `receive` 
-gets the element. In the following example two coroutines "ping" and "pong" are 
-receiving the "ball" object from the shared "table" channel. 
-
-Send and receive operations to channels are _fair_ with respect to the order of their invocation from multiple coroutines. They are served in first-in first-out order, e.g. the first coroutine to invoke `receive` gets the element. In the following example two coroutines "ping" and "pong" are receiving the "ball" object from the shared "table" channel. 
 
 チャネルへの操作の送信と受信は、複数のコルーチンからの呼び出しの順番に関して _公正_ です。 
 それらはファーストイン・ファーストアウトの順序で提供されます。例えば `receive` を呼び出す最初のコルーチンは要素を取得します。
@@ -1471,17 +1463,16 @@ ping Ball(hits=5)
 
 <!--- TEST -->
 
-## Shared mutable state and concurrency
+## 共有ミュータブルステートと並行性
 
-Coroutines can be executed concurrently using a multi-threaded dispatcher like [CommonPool]. It presents
-all the usual concurrency problems. The main problem being synchronization of access to **shared mutable state**. 
-Some solutions to this problem in the land of coroutines are similar to the solutions in the multi-threaded world, 
-but others are unique.
+コルーチンは、[CommonPool]のようなマルチスレッドディスパッチャを使用して同時に実行できます。 これは、すべての通常の並行性の問題を提起します。
+主な問題は、**共有ミュータブルステート**へのアクセスの同期です。
+コルーチンの世界でのこの問題に対するいくつかの解決策は、マルチスレッドの世界の解決策と似ていますが、他は独自のものです。
 
-### The problem
+### 問題
 
-Let us launch a thousand coroutines all doing the same action thousand times (for a total of a million executions). 
-We'll also measure their completion time for further comparisons:
+千のコルーチンを同じように千回実行してみましょう（100万回の実行）。
+さらなる比較のために完了時間も測定します。
 
 <!--- INCLUDE .*/example-sync-([0-9]+).kt
 import kotlin.coroutines.experimental.CoroutineContext
@@ -1502,8 +1493,8 @@ import kotlinx.coroutines.experimental.channels.*
 
 ```kotlin
 suspend fun massiveRun(context: CoroutineContext, action: suspend () -> Unit) {
-    val n = 1000 // number of coroutines to launch
-    val k = 1000 // times an action is repeated by each coroutine
+    val n = 1000 // 起動するコルーチンの数
+    val k = 1000 // 各コルーチンによってアクションが繰り返される回数
     val time = measureTimeMillis {
         val jobs = List(n) {
             launch(context) {
@@ -1518,8 +1509,7 @@ suspend fun massiveRun(context: CoroutineContext, action: suspend () -> Unit) {
 
 <!--- INCLUDE .*/example-sync-([0-9]+).kt -->
 
-We start with a very simple action that increments a shared mutable variable using 
-multi-threaded [CommonPool] context. 
+まず、マルチスレッド化された[CommonPool]コンテキストを使用して、共有ミュータブル変数をインクリメントする非常に単純なアクションから始めます。
 
 ```kotlin
 var counter = 0
@@ -1532,22 +1522,21 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-01.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-01.kt)で完全なコードを取得できます
 
 <!--- TEST LINES_START
 Completed 1000000 actions in
 Counter =
 -->
 
-What does it print at the end? It is highly unlikely to ever print "Counter = 1000000", because a thousand coroutines 
-increment the `counter` concurrently from multiple threads without any synchronization.
+最後に何がプリントされますか？ 千のコルーチンが同期なしで複数のスレッドから同時に `counter` をインクリメントするため、「Counter = 1000000」をプリントすることはほとんどありません。
 
-### Volatiles are of no help
+### Volatileは助けにならない
 
-There is common misconception that making a variable `volatile` solves concurrency problem. Let us try it:
+変数を `volatile` にすると並行性の問題が解決されるという誤解が一般的です。 それを試してみましょう。
 
 ```kotlin
-@Volatile // in Kotlin `volatile` is an annotation 
+@Volatile // Kotlinの `volatile` はアノテーション
 var counter = 0
 
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -1558,23 +1547,19 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-02.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-02.kt)で完全なコードを取得できます
 
 <!--- TEST LINES_START
 Completed 1000000 actions in
 Counter =
 -->
 
-This code works slower, but we still don't get "Counter = 1000000" at the end, because volatile variables guarantee
-linearizable (this is a technical term for "atomic") reads and writes to the corresponding variable, but
-do not provide atomicity of larger actions (increment in our case).
+このコードはより遅く動作しますが、volatile変数は対応する変数の線形（専門用語で「アトミック」）読み書きを保証するものの、より大きなアクション（この場合はインクリメント）のアトミック性を提供しないため、最後に「Counter = 1000000」を得られません。 
 
-### Thread-safe data structures
+### スレッドセーフなデータ構造
 
-The general solution that works both for threads and for coroutines is to use a thread-safe (aka synchronized,
-linearizable, or atomic) data structure that provides all the necessarily synchronization for the corresponding 
-operations that needs to be performed on a shared state. 
-In the case of a simple counter we can use `AtomicInteger` class which has atomic `incrementAndGet` operations:
+スレッドとコルーチンの両方で機能する一般的な解決策は、共有状態で実行する必要があるすべての操作で必ず同期を提供するスレッドセーフ（別名、同期、線形化、またはアトミック）データ構造を使用することです。
+単純なカウンタの場合、アトミックな `incrementAndGet` 操作を持つ `AtomicInteger` クラスを使うことができます。
 
 ```kotlin
 var counter = AtomicInteger()
@@ -1587,31 +1572,27 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-03.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-03.kt)で完全なコードを取得できます
 
 <!--- TEST ARBITRARY_TIME
 Completed 1000000 actions in xxx ms
 Counter = 1000000
 -->
 
-This is the fastest solution for this particular problem. It works for plain counters, collections, queues and other
-standard data structures and basic operations on them. However, it does not easily scale to complex
-state or to complex operations that do not have ready-to-use thread-safe implementations. 
+これは、この特定の問題に対する最速の解決策です。 単純なカウンター、コレクション、キュー、その他の標準的なデータ構造とそれらの基本的な操作では機能します。 ただし、複雑な状態やすぐに使用できるスレッドセーフな実装を持たない複雑な操作には、容易に拡張できません。
 
-### Thread confinement fine-grained
+### 細粒度のスレッド拘束
 
-_Thread confinement_ is an approach to the problem of shared mutable state where all access to the particular shared
-state is confined to a single thread. It is typically used in UI applications, where all UI state is confined to 
-the single event-dispatch/application thread. It is easy to apply with coroutines by using a  
-single-threaded context:
+_スレッド拘束_ は、特定の共有状態へのすべてのアクセスが1つのスレッドに限定されている、共有ミュータブルステートの問題への提案です。
+これは通常、すべてのUI状態が単一のイベントディスパッチ/アプリケーションスレッドに限定されるUIアプリケーションで使用されます。 単一スレッドのコンテキストを使用してコルーチンで簡単に適用できます。
 
 ```kotlin
 val counterContext = newSingleThreadContext("CounterContext")
 var counter = 0
 
 fun main(args: Array<String>) = runBlocking<Unit> {
-    massiveRun(CommonPool) { // run each coroutine in CommonPool
-        run(counterContext) { // but confine each increment to the single-threaded context
+    massiveRun(CommonPool) { // 各コルーチンをCommonPoolで実行する
+        run(counterContext) { // それぞれのインクリメントを単一スレッドのコンテキストに限定する
             counter++
         }
     }
@@ -1619,49 +1600,50 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-04.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-04.kt)で完全なコードを取得できます
 
 <!--- TEST ARBITRARY_TIME
 Completed 1000000 actions in xxx ms
 Counter = 1000000
 -->
 
-This code works very slowly, because it does _fine-grained_ thread-confinement. Each individual increment switches 
-from multi-threaded `CommonPool` context to the single-threaded context using [run] block. 
+このコードは _細粒度_ のスレッド拘束を行うため、非常にゆっくりと動作します。
+個々のインクリメントは [run] ブロックを使用してマルチスレッドの `CommonPool` コンテキストからシングルスレッドのコンテキストに切り替わります。
 
-### Thread confinement coarse-grained
+### 粗粒度のスレッド拘束
 
-In practice, thread confinement is performed in large chunks, e.g. big pieces of state-updating business logic
-are confined to the single thread. The following example does it like that, running each coroutine in 
-the single-threaded context to start with.
+現実にはスレッド拘束は大きなチャンクで行われます。例えば、状態を更新するビジネスロジックの大きな部分は単一のスレッドに限定されます。
+次の例では、そのようにしてシングルスレッドコンテキストで各コルーチンを起動して実行します。
 
 ```kotlin
 val counterContext = newSingleThreadContext("CounterContext")
 var counter = 0
 
 fun main(args: Array<String>) = runBlocking<Unit> {
-    massiveRun(counterContext) { // run each coroutine in the single-threaded context
+    massiveRun(counterContext) { // 各コルーチンをシングルスレッドコンテキストで実行する
         counter++
     }
     println("Counter = $counter")
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-05.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-05.kt)で完全なコードを取得できます
 
 <!--- TEST ARBITRARY_TIME
 Completed 1000000 actions in xxx ms
 Counter = 1000000
 -->
 
-This now works much faster and produces correct result.
+これで、はるかに高速に動作し正しい結果が得られます。
 
-### Mutual exclusion
+### 排他制御
 
-Mutual exclusion solution to the problem is to protect all modifications of the shared state with a _critical section_
-that is never executed concurrently. In a blocking world you'd typically use `synchronized` or `ReentrantLock` for that.
-Coroutine's alternative is called [Mutex]. It has [lock][Mutex.lock] and [unlock][Mutex.unlock] functions to 
-delimit a critical section. The key difference is that `Mutex.lock` is a suspending function. It does not block a thread.
+この問題に対する排他制御の解決策は、決して同時に実行されない _クリティカルセクション_ で共有状態のすべての変更を保護することです。
+ブロックする世界では通常 `synchronized` または `ReentrantLock` を使用します。
+コルーチンの代案は[Mutex]と呼ばれています。
+それはクリティカルセクションを区切る[lock][Mutex.lock]と[unlock][Mutex.unlock]関数を持っています。
+主な違いは、 `Mutex.lock` はサスペンド関数であることです。
+これはスレッドをブロックしません。
 
 ```kotlin
 val mutex = Mutex()
@@ -1677,37 +1659,34 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-06.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-06.kt)で完全なコードを取得できます
 
 <!--- TEST ARBITRARY_TIME
 Completed 1000000 actions in xxx ms
 Counter = 1000000
 -->
 
-The locking in this example is fine-grained, so it pays the price. However, it is a good choice for some situations
-where you absolutely must modify some shared state periodically, but there is no natural thread that this state
-is confined to.
+この例でのロックは細粒度なので、代償を払っています。
+しかし、共有状態を定期的に変更しなければならない状況には適していますが、この状態が限定された自然なスレッドはありません。
 
-### Actors
+### アクター
 
-An actor is a combination of a coroutine, the state that is confined and is encapsulated into this coroutine,
-and a channel to communicate with other coroutines. A simple actor can be written as a function, 
-but an actor with a complex state is better suited for a class. 
+アクターは、コルーチン、このコルーチンに閉じ込められカプセル化された状態、および他のコルーチンと通信するためのチャネルの組み合わせです。
+単純なアクターは関数として記述できますが、複雑な状態のアクターはクラスに適しています。
 
-There is an [actor] coroutine builder that conveniently combines actor's mailbox channel into its 
-scope to receive messages from and combines the send channel into the resulting job object, so that a 
-single reference to the actor can be carried around as its handle.
+[actor]コルーチンビルダーがアクターのメールボックスチャネルをメッセージを受信するスコープに結合し、
+結果のジョブオブジェクトに送信チャネルを結合するので、アクターへの単一の参照をそのハンドルとして持ち運ぶことができます。
 
 ```kotlin
-// Message types for counterActor
+// counterActorのメッセージ型
 sealed class CounterMsg
-object IncCounter : CounterMsg() // one-way message to increment counter
-class GetCounter(val response: SendChannel<Int>) : CounterMsg() // a request with reply
+object IncCounter : CounterMsg() // カウンターをインクリメントする一方向のメッセージ
+class GetCounter(val response: SendChannel<Int>) : CounterMsg() // 返信を持ったリクエスト
 
-// This function launches a new counter actor
+// この関数は、新しいカウンタアクタを起動する
 fun counterActor() = actor<CounterMsg>(CommonPool) {
-    var counter = 0 // actor state
-    for (msg in channel) { // iterate over incoming messages
+    var counter = 0 // アクターの状態
+    for (msg in channel) { // 受信メッセージを反復処理する
         when (msg) {
             is IncCounter -> counter++
             is GetCounter -> msg.response.send(counter)
@@ -1716,36 +1695,33 @@ fun counterActor() = actor<CounterMsg>(CommonPool) {
 }
 
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val counter = counterActor() // create the actor
+    val counter = counterActor() // アクターを作る
     massiveRun(CommonPool) {
         counter.send(IncCounter)
     }
     val response = Channel<Int>()
     counter.send(GetCounter(response))
     println("Counter = ${response.receive()}")
-    counter.close() // shutdown the actor
+    counter.close() // アクターを終了する
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-07.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-07.kt)で完全なコードを取得できます
 
 <!--- TEST ARBITRARY_TIME
 Completed 1000000 actions in xxx ms
 Counter = 1000000
 -->
 
-It does not matter (for correctness) what context the actor itself is executed in. An actor is
-a coroutine and a coroutine is executed sequentially, so confinement of the state to the specific coroutine
-works as a solution to the problem of shared mutable state.
+アクター自体がどのようなコンテキストで実行されるかは（正確さにおいて）問題ではありません。
+アクターはコルーチンでありコルーチンは順番に実行されるので、特定のコルーチンへの状態の閉じ込めは共有ミュータブルステートの問題に対する解決策として機能します。
 
-Actor is more efficient than locking under load, because in this case it always has work to do and it does not 
-have to switch to a different context at all.
+この場合、常に実行する作業があり別のコンテキストに切り替える必要がないため、負荷の下ではロックよりもアクターのほうが効率的です。
 
-> Note, that an [actor] coroutine builder is a dual of [produce] coroutine builder. An actor is associated 
-  with the channel that it receives messages from, while a producer is associated with the channel that it 
-  sends elements to.
+> [actor]コルーチンビルダーは二重の[produce]コルーチンビルダーであることに注意してください。
+  アクターはメッセージを受信するチャネルに関連付けられ、プロデューサーは要素を送信するチャネルに関連付けられます。
 
-## Select expression
+## セレクト式
 
 Select expression makes it possible to await multiple suspending functions simultaneously and _select_
 the first one that becomes available.
