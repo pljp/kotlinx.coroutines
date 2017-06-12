@@ -93,7 +93,7 @@ class GuideTest {
   * [アクター](#アクター)
 * [セレクト式](#セレクト式)
   * [チャネルからの選択](#チャネルからの選択)
-  * [クローズの選択](#クローズの選択)
+  * [クローズ時の選択](#クローズ時の選択)
   * [送信の選択](#送信の選択)
   * [延期された値の選択](#延期された値の選択)
   * [延期された値のチャネルの切り替え](#延期された値のチャネルの切り替え)
@@ -1723,17 +1723,16 @@ Counter = 1000000
 
 ## セレクト式
 
-Select expression makes it possible to await multiple suspending functions simultaneously and _select_
-the first one that becomes available.
+セレクト式を使用すると複数のサスペンド関数を同時に待つことができ、利用可能になった最初のものを _選択_ することができます。
 
 <!--- INCLUDE .*/example-select-([0-9]+).kt
 import kotlinx.coroutines.experimental.channels.*
 import kotlinx.coroutines.experimental.selects.*
 -->
 
-### Selecting from channels
+### チャネルからの選択
 
-Let us have two producers of strings: `fizz` and `buzz`. The `fizz` produces "Fizz" string every 300 ms:
+2つの文字列のプロデューサー、 `fizz` と `buzz` があります。 `fizz` は300ミリ秒ごとに"Fizz"文字列を生成します。
 
 <!--- INCLUDE .*/example-select-01.kt
 import kotlin.coroutines.experimental.CoroutineContext
@@ -1741,42 +1740,41 @@ import kotlin.coroutines.experimental.CoroutineContext
 
 ```kotlin
 fun fizz(context: CoroutineContext) = produce<String>(context) {
-    while (true) { // sends "Fizz" every 300 ms
+    while (true) { // 300ミリ秒ごとに "Fizz" を送る
         delay(300)
         send("Fizz")
     }
 }
 ```
 
-And the `buzz` produces "Buzz!" string every 500 ms:
+`buzz` は500ミリ秒ごとに "Buzz!" 文字列を生成します。
 
 ```kotlin
 fun buzz(context: CoroutineContext) = produce<String>(context) {
-    while (true) { // sends "Buzz!" every 500 ms
+    while (true) { // 500ミリ秒ごとに "Buzz!" を送る
         delay(500)
         send("Buzz!")
     }
 }
 ```
 
-Using [receive][ReceiveChannel.receive] suspending function we can receive _either_ from one channel or the
-other. But [select] expression allows us to receive from _both_ simultaneously using its
-[onReceive][SelectBuilder.onReceive] clauses:
+[receive][ReceiveChannel.receive]サスペンド関数を使用すると、一方のチャネルから _または_ 他方のチャネルから受信することができます。
+しかし、[select]式は、[onReceive][SelectBuilder.onReceive]節を使って _両方_ から同時に受け取ることができます。
 
 ```kotlin
 suspend fun selectFizzBuzz(fizz: ReceiveChannel<String>, buzz: ReceiveChannel<String>) {
-    select<Unit> { // <Unit> means that this select expression does not produce any result 
-        fizz.onReceive { value ->  // this is the first select clause
+    select<Unit> { // <Unit>はこのセレクト式が結果を生成しないことを意味します
+        fizz.onReceive { value ->  // 最初のセレクト節
             println("fizz -> '$value'")
         }
-        buzz.onReceive { value ->  // this is the second select clause
+        buzz.onReceive { value ->  // 2番目のセレクト節
             println("buzz -> '$value'")
         }
     }
 }
 ```
 
-Let us run it all seven times:
+これを全部で7回実行しましょう。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -1788,9 +1786,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-01.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-01.kt)で完全なコードを取得できます
 
-The result of this code is: 
+このコードの結果は次のとおりです。
 
 ```text
 fizz -> 'Fizz'
@@ -1804,12 +1802,11 @@ buzz -> 'Buzz!'
 
 <!--- TEST -->
 
-### Selecting on close
+### クローズ時の選択
 
-The [onReceive][SelectBuilder.onReceive] clause in `select` fails when the channel is closed and the corresponding
-`select` throws an exception. We can use [onReceiveOrNull][SelectBuilder.onReceiveOrNull] clause to perform a
-specific action when the channel is closed. The following example also shows that `select` is an expression that returns 
-the result of its selected clause:
+チャネルが閉じられ、対応する `select` が例外をスローすると、 `select` の[onReceive][SelectBuilder.onReceive]節は失敗します。
+[onReceiveOrNull][SelectBuilder.onReceiveOrNull]節を使用して、チャネルが閉じられたときに特定のアクションを実行できます。
+次の例は、 `select` が選択された節の結果を返す式であることも示しています。
 
 ```kotlin
 suspend fun selectAorB(a: ReceiveChannel<String>, b: ReceiveChannel<String>): String =
@@ -1829,27 +1826,26 @@ suspend fun selectAorB(a: ReceiveChannel<String>, b: ReceiveChannel<String>): St
     }
 ```
 
-Let's use it with channel `a` that produces "Hello" string four times and 
-channel `b` that produces "World" four times:
+"Hello" 文字列を4回生成するチャネル `a` と "World" を4回生成するチャネル `b` を使用しましょう。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    // we are using the context of the main thread in this example for predictability ... 
+    // この例ではメインスレッドのコンテキストを予測可能性のために使用する...
     val a = produce<String>(context) { 
         repeat(4) { send("Hello $it") }
     }
     val b = produce<String>(context) { 
         repeat(4) { send("World $it") }
     }
-    repeat(8) { // print first eight results
+    repeat(8) { // 最初の8個の結果をプリントする
         println(selectAorB(a, b))
     }
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-02.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-02.kt)で完全なコードを取得できます
 
-The result of this code is quite interesting, so we'll analyze it in mode detail:
+このコードの結果は非常に興味深いので、それをモードの詳細で分析します。
 
 ```text
 a -> 'Hello 0'
@@ -1864,55 +1860,52 @@ Channel 'a' is closed
 
 <!--- TEST -->
 
-There are couple of observations to make out of it. 
+それにはいくつかの所見があります。
 
-First of all, `select` is _biased_ to the first clause. When several clauses are selectable at the same time, 
-the first one among them gets selected. Here, both channels are constantly producing strings, so `a` channel,
-being the first clause in select, wins. However, because we are using unbuffered channel, the `a` gets suspended from
-time to time on its [send][SendChannel.send] invocation and gives a chance for `b` to send, too.
+まず、 `select` は最初の節に _偏って_ います。
+複数の節が同時に選択可能な場合、最初の節が選択されます。
+ここでは、両方のチャネルが常に文字列を生成しているので、チャネル `a` はselectの最初の節であり、勝ちます。
+しかし、バッファされていないチャネルを使用しているので、 `a` は[send][SendChannel.send]呼び出しで時々中断し、 `b` にも送信する機会を与えます。
 
-The second observation, is that [onReceiveOrNull][SelectBuilder.onReceiveOrNull] gets immediately selected when the 
-channel is already closed.
+2番目の所見は、[onReceiveOrNull][SelectBuilder.onReceiveOrNull]は、チャネルが既に閉じられているときに直ちに選択されることです。
 
-### Selecting to send
+### 送信の選択
 
-Select expression has [onSend][SelectBuilder.onSend] clause that can be used for a great good in combination 
-with a biased nature of selection.
+Select式には、[onSend][SelectBuilder.onSend]節があり、選択のバイアスされた性質と組み合わせてとても有効に使用できます。
 
-Let us write an example of producer of integers that sends its values to a `side` channel when 
-the consumers on its primary channel cannot keep up with it:
+プライマリチャネルのコンシューマーが送信に追いつかないときに、その値を `side` チャネルに送る整数のプロデューサーの例を書きましょう。
 
 ```kotlin
 fun produceNumbers(side: SendChannel<Int>) = produce<Int>(CommonPool) {
-    for (num in 1..10) { // produce 10 numbers from 1 to 10
-        delay(100) // every 100 ms
+    for (num in 1..10) { // 1から10までの10個の数を生成する
+        delay(100) // 100ミリ秒ごと
         select<Unit> {
-            onSend(num) {} // Send to the primary channel
-            side.onSend(num) {} // or to the side channel     
+            onSend(num) {} // プライマリチャネルに送る
+            side.onSend(num) {} // またはサイドチャネルに送る
         }
     }
 }
 ```
 
-Consumer is going to be quite slow, taking 250 ms to process each number:
+コンシューマーはかなり遅くして、各数値を処理するのに250ミリ秒かけることにします。
  
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val side = Channel<Int>() // allocate side channel
-    launch(context) { // this is a very fast consumer for the side channel
+    val side = Channel<Int>() // サイドチャネルを割り当てる
+    launch(context) { // これはサイドチャネルの非常に高速なコンシューマー
         side.consumeEach { println("Side channel has $it") }
     }
     produceNumbers(side).consumeEach { 
         println("Consuming $it")
-        delay(250) // let us digest the consumed number properly, do not hurry
+        delay(250) // 急がずに、消費した値をきっちり消化する
     }
     println("Done consuming")
 }
 ``` 
  
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-03.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-03.kt)で完全なコードを取得できます
   
-So let us see what happens:
+では、何が起こるか見てみましょう。
  
 ```text
 Consuming 1
@@ -1930,11 +1923,10 @@ Done consuming
 
 <!--- TEST -->
 
-### Selecting deferred values
+### 延期された値の選択
 
-Deferred values can be selected using [onAwait][SelectBuilder.onAwait] clause. 
-Let us start with an async function that returns a deferred string value after 
-a random delay:
+遅延値は、[onAwait][SelectBuilder.onAwait]節を使用して選択できます。
+ランダム遅延の後に遅延文字列値を返す非同期関数から始めましょう。
 
 <!--- INCLUDE .*/example-select-04.kt
 import java.util.*
@@ -1947,7 +1939,7 @@ fun asyncString(time: Int) = async(CommonPool) {
 }
 ```
 
-Let us start a dozen of them with a random delay.
+ランダムな遅延でこれを1ダース開始してみましょう。
 
 ```kotlin
 fun asyncStringsList(): List<Deferred<String>> {
@@ -1956,10 +1948,9 @@ fun asyncStringsList(): List<Deferred<String>> {
 }
 ```
 
-Now the main function awaits for the first of them to complete and counts the number of deferred values
-that are still active. Note, that we've used here the fact that `select` expression is a Kotlin DSL, 
-so we can provide clauses for it using an arbitrary code. In this case we iterate over a list
-of deferred values to provide `onAwait` clause for each deferred value.
+メイン関数は最初のasyncString関数が完了するのを待って、まだアクティブな遅延値の数を数えます。
+`select` 式はKotlin DSLであるため、任意のコードを使って節を提供することができることに留意してください。
+この場合、各遅延値に対して `onAwait` 節を提供するために遅延値のリストを反復します。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -1977,9 +1968,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-04.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-04.kt)で完全なコードを取得できます
 
-The output is:
+出力は、
 
 ```text
 Deferred 4 produced answer 'Waited for 128 ms'
@@ -1988,28 +1979,27 @@ Deferred 4 produced answer 'Waited for 128 ms'
 
 <!--- TEST -->
 
-### Switch over a channel of deferred values
+### 延期された値のチャネルの切り替え
 
-Let us write a channel producer function that consumes a channel of deferred string values, waits for each received
-deferred value, but only until the next deferred value comes over or the channel is closed. This example puts together 
-[onReceiveOrNull][SelectBuilder.onReceiveOrNull] and [onAwait][SelectBuilder.onAwait] clauses in the same `select`:
+次の遅延値が来るかチャネルが閉じられるまで、遅延ストリング値のチャネルを消費し、受信した遅延値を待つチャネルプロデューサー関数を書きましょう。
+この例では、同じ `select` に[onReceiveOrNull][SelectBuilder.onReceiveOrNull]節と[onAwait] [SelectBuilder.onAwait]節を入れています。
 
 ```kotlin
 fun switchMapDeferreds(input: ReceiveChannel<Deferred<String>>) = produce<String>(CommonPool) {
-    var current = input.receive() // start with first received deferred value
-    while (isActive) { // loop while not cancelled/closed
-        val next = select<Deferred<String>?> { // return next deferred value from this select or null
+    var current = input.receive() // 最初に受け取った遅延値から開始する
+    while (isActive) { // キャンセルまたは閉じられない限りループする
+        val next = select<Deferred<String>?> { // このselectから次の遅延値またはnullを返す
             input.onReceiveOrNull { update ->
-                update // replaces next value to wait
+                update // 待機する次の値を置き換える
             }
             current.onAwait { value ->  
-                send(value) // send value that current deferred has produced
-                input.receiveOrNull() // and use the next deferred from the input channel
+                send(value) // 現在の遅延が発生した値を送信する
+                input.receiveOrNull() // 入力チャネルから次の遅延を使用する
             }
         }
         if (next == null) {
             println("Channel was closed")
-            break // out of loop
+            break // ループを出る
         } else {
             current = next
         }
@@ -2017,7 +2007,7 @@ fun switchMapDeferreds(input: ReceiveChannel<Deferred<String>>) = produce<String
 }
 ```
 
-To test it, we'll use a simple async function that resolves to a specified string after a specified time:
+これをテストするために、指定した時間後に指定された文字列に解決される単純な非同期関数を使用します。
 
 ```kotlin
 fun asyncString(str: String, time: Long) = async(CommonPool) {
@@ -2026,32 +2016,31 @@ fun asyncString(str: String, time: Long) = async(CommonPool) {
 }
 ```
 
-The main function just launches a coroutine to print results of `switchMapDeferreds` and sends some test
-data to it:
+メイン関数は、単に `switchMapDeferreds` の結果をプリントするコルーチンを起動し、いくつかのテストデータを送信するだけです。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val chan = Channel<Deferred<String>>() // the channel for test
-    launch(context) { // launch printing coroutine
+    val chan = Channel<Deferred<String>>() // テスト用のチャネル
+    launch(context) { // プリント用のコルーチンを起動する
         for (s in switchMapDeferreds(chan)) 
-            println(s) // print each received string
+            println(s) // 受信した文字列をプリントする
     }
     chan.send(asyncString("BEGIN", 100))
-    delay(200) // enough time for "BEGIN" to be produced
+    delay(200) // "BEGIN" が生成されるのに十分な時間
     chan.send(asyncString("Slow", 500))
-    delay(100) // not enough time to produce slow
+    delay(100) // slowが生成されるには不十分な時間
     chan.send(asyncString("Replace", 100))
-    delay(500) // give it time before the last one
+    delay(500) // 最後のものの前に時間を与える
     chan.send(asyncString("END", 500))
-    delay(1000) // give it time to process
-    chan.close() // close the channel ... 
-    delay(500) // and wait some time to let it finish
+    delay(1000) // 処理に時間を与える
+    chan.close() // チャネルを閉じる ... 
+    delay(500) // 終了させるためにしばらく待つ
 }
 ```
 
-> You can get full code [here](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-05.kt)
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-05.kt)で完全なコードを取得できます
 
-The result of this code:
+このコードの結果は次の通りです。
 
 ```text
 BEGIN
@@ -2062,7 +2051,7 @@ Channel was closed
 
 <!--- TEST -->
 
-## Further reading
+## 参考文献
 
 * [Guide to UI programming with coroutines](ui/coroutines-guide-ui.md)
 * [Guide to reactive streams with coroutines](reactive/coroutines-guide-reactive.md)
