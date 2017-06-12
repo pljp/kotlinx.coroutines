@@ -312,7 +312,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     delay(1300L) // 少し遅らせる
     println("main: I'm tired of waiting!")
     job.cancel() // ジョブをキャンセル
-    delay(1300L) // それが本当にキャンセルされたことを確認するために少し遅れさせる
+    delay(1300L) // 本当にキャンセルされたことを確認するために少し遅らせる
     println("main: Now I can quit.")
 }
 ``` 
@@ -363,7 +363,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 > [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-02.kt)で完全なコードを取得できます
 
-実行して、キャンセル後も「私は眠っています」とプリントし続けることを確認します。
+実行して、キャンセル後も "I'm sleeping" とプリントし続けることを確認します。
 
 <!--- TEST 
 I'm sleeping 0 ...
@@ -409,7 +409,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 > [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-03.kt)で完全なコードを取得できます
 
 ご覧のとおり、このループはキャンセルできます。
-[isActive] [CoroutineScope.isActive]は、[CoroutineScope]オブジェクトを介してコルーチンのコード内で使用できるプロパティです。
+[isActive][CoroutineScope.isActive]は、[CoroutineScope]オブジェクトを介してコルーチンのコード内で使用できるプロパティです。
 
 <!--- TEST
 I'm sleeping 0 ...
@@ -759,7 +759,7 @@ The difference between parent [context][CoroutineScope.context] and [Unconfined]
 中断後、呼び出されたサスペンド関数によって完全に決定されたスレッドで再開されます。
 コルーチンがCPU時間を消費しない場合や、特定のスレッドに限定された共有データ（UIなど）を更新しない場合、Unconfinedディスパッチャが適切です。
 
-一方、[CoroutineScope]インターフェースを介してコルーチンのブロック内で使用できる[コンテキスト][CoroutineScope.context]プロパティは、この特定のコルーチンのコンテキストへの参照です。
+一方、[CoroutineScope]インターフェイスを介してコルーチンのブロック内で使用できる[コンテキスト][CoroutineScope.context]プロパティは、この特定のコルーチンのコンテキストへの参照です。
 このようにして、親コンテキストを継承することができます。
 特に、[runBlocking]のデフォルトコンテキストは呼び出し側スレッドに限定されているため、継承すると予測可能なFIFOスケジューリングを使用してこのスレッドに実行を限定するという効果があります。
 
@@ -1121,7 +1121,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
         for (x in 1..5) channel.send(x * x)
         channel.close() // 送信完了
     }
-    // ここでは `for` ループを使って受け取った値をプリントします（チャンネルが閉じられるまで）
+    // ここでは `for` ループを使って受け取った値をプリントします（チャネルが閉じられるまで）
     for (y in channel) println(y)
     println("Done!")
 }
@@ -1343,7 +1343,7 @@ Processor #3 received 10
 ### 論理入力数
 
 複数のコルーチンが同じチャネルに送信することがあります。
-たとえば、文字列のチャンネルと、指定された文字列を指定された遅延でこのチャンネルに繰り返し送信するサスペンド関数を持っています。
+たとえば、文字列のチャネルと、指定された文字列を指定された遅延でこのチャネルに繰り返し送信するサスペンド関数を持っています。
 
 ```kotlin
 suspend fun sendString(channel: SendChannel<String>, s: String, time: Long) {
@@ -1384,7 +1384,7 @@ BAR!
 
 ### バッファーされたチャネル
 
-今までに示されたチャンネルにはバッファーがありませんでした。 バッファーされていないチャネルは、送信側と受信側がお互いに出会ったときに要素を転送します（別名ランデブー）。 sendが最初に呼び出された場合、receiveが呼び出されるまで中断されます。receiveが最初に呼び出された場合、sendが呼び出されるまで中断されます。
+今までに示されたチャネルにはバッファーがありませんでした。 バッファーされていないチャネルは、送信側と受信側がお互いに出会ったときに要素を転送します（別名ランデブー）。 sendが最初に呼び出された場合、receiveが呼び出されるまで中断されます。receiveが最初に呼び出された場合、sendが呼び出されるまで中断されます。
 
 [Channel()] [Channel.invoke]ファクトリ関数と[produce]ビルダーは、_バッファーサイズ_ を指定するためのオプションの `capacity` パラメータをとります。 バッファーは、指定された容量を持つ `BlockingQueue` と同様に、送信側が中断する前に複数の要素を送信できるようにします。これはバッファーがいっぱいになるとブロックします。
 
