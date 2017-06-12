@@ -19,13 +19,15 @@ package kotlinx.coroutines.experimental
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.core.IsEqual
 import org.junit.Test
+import kotlin.coroutines.experimental.ContinuationInterceptor
+import kotlin.coroutines.experimental.CoroutineContext
 
 class RunTest : TestBase() {
     @Test
     fun testSameContextNoSuspend() = runBlocking<Unit> {
         expect(1)
         launch(context) { // make sure there is not early dispatch here
-            finish(5)
+            expectUnreached() // will terminate before it has a chance to start
         }
         expect(2)
         val result = run(context) { // same context!
@@ -33,7 +35,7 @@ class RunTest : TestBase() {
             "OK"
         }
         assertThat(result, IsEqual("OK"))
-        expect(4)
+        finish(4)
     }
 
     @Test
@@ -57,7 +59,7 @@ class RunTest : TestBase() {
     fun testCancelWithJobNoSuspend() = runBlocking<Unit> {
         expect(1)
         launch(context) { // make sure there is not early dispatch to here
-            finish(6)
+            expectUnreached() // will terminate before it has a chance to start
         }
         expect(2)
         val job = Job()
@@ -73,7 +75,7 @@ class RunTest : TestBase() {
             "OK"
         }
         assertThat(result, IsEqual("OK"))
-        expect(5)
+        finish(5)
     }
 
     @Test
@@ -123,5 +125,47 @@ class RunTest : TestBase() {
         }
         assertThat(result, IsEqual("OK"))
         finish(4)
+    }
+
+    @Test(expected = CancellationException::class)
+    fun testRunCancellableDefault() = runBlocking<Unit> {
+        val job = Job()
+        job.cancel() // cancel before it has a chance to run
+        run(job + wrapperDispatcher(context)) {
+            expectUnreached() // will get cancelled
+        }
+    }
+
+    @Test(expected = CancellationException::class)
+    fun testRunAtomicTryCancel() = runBlocking<Unit> {
+        expect(1)
+        val job = Job()
+        job.cancel() // try to cancel before it has a chance to run
+        run(job + wrapperDispatcher(context), CoroutineStart.ATOMIC) { // but start atomically
+            finish(2)
+            yield() // but will cancel here
+            expectUnreached()
+        }
+    }
+
+    @Test(expected = CancellationException::class)
+    fun testRunUndispatchedTryCancel() = runBlocking<Unit> {
+        expect(1)
+        val job = Job()
+        job.cancel() // try to cancel before it has a chance to run
+        run(job + wrapperDispatcher(context), CoroutineStart.UNDISPATCHED) { // but start atomically
+            finish(2)
+            yield() // but will cancel here
+            expectUnreached()
+        }
+    }
+
+    private fun wrapperDispatcher(context: CoroutineContext): CoroutineContext {
+        val dispatcher = context[ContinuationInterceptor] as CoroutineDispatcher
+        return object : CoroutineDispatcher() {
+            override fun dispatch(context: CoroutineContext, block: Runnable) {
+                dispatcher.dispatch(context, block)
+            }
+        }
     }
 }

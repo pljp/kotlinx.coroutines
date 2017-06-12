@@ -16,7 +16,6 @@
 
 package kotlinx.coroutines.experimental
 
-import kotlinx.coroutines.experimental.intrinsics.startCoroutineUndispatched
 import java.util.concurrent.locks.LockSupport
 import kotlin.coroutines.experimental.*
 import kotlin.coroutines.experimental.intrinsics.startCoroutineUninterceptedOrReturn
@@ -33,7 +32,8 @@ import kotlin.coroutines.experimental.intrinsics.suspendCoroutineOrReturn
  * The [context][CoroutineScope.context] of the parent coroutine from its [scope][CoroutineScope] may be used,
  * in which case the [Job] of the resulting coroutine is a child of the job of the parent coroutine.
  *
- * By default, the coroutine is immediately started.
+ * By default, the coroutine is immediately scheduled for execution.
+ * Other options can be specified via `start` parameter. See [CoroutineStart] for details.
  * An optional [start] parameter can be set to [CoroutineStart.LAZY] to start coroutine _lazily_. In this case,
  * the coroutine [Job] is created in _new_ state. It can be explicitly started with [start][Job.start] function
  * and will be started implicitly on the first invocation of [join][Job.join].
@@ -77,31 +77,52 @@ public fun launch(context: CoroutineContext, start: Boolean, block: suspend Coro
  * This function immediately applies dispatcher from the new context, shifting execution of the block into the
  * different thread inside the block, and back when it completes.
  * The specified [context] is added onto the current coroutine context for the execution of the block.
+ *
+ * An optional `start` parameter is used only if the specified `context` uses a different [CoroutineDispatcher] than
+ * a current one, otherwise it is ignored.
+ * By default, the coroutine is immediately scheduled for execution and can be cancelled
+ * while it is waiting to be executed and it can be cancelled while the result is scheduled
+ * to be be processed by the invoker context.
+ * Other options can be specified via `start` parameter. See [CoroutineStart] for details.
+ * A value of [CoroutineStart.LAZY] is not supported and produces [IllegalArgumentException].
  */
-public suspend fun <T> run(context: CoroutineContext, block: suspend () -> T): T =
-    suspendCoroutineOrReturn sc@ { cont ->
-        val oldContext = cont.context
-        // fast path #1 if there is no change in the actual context:
-        if (context === oldContext || context is CoroutineContext.Element && oldContext[context.key] === context)
-            return@sc block.startCoroutineUninterceptedOrReturn(cont)
-        // compute new context
-        val newContext = oldContext + context
-        // fast path #2 if the result is actually the same
-        if (newContext === oldContext)
-            return@sc block.startCoroutineUninterceptedOrReturn(cont)
-        // fast path #3 if the new dispatcher is the same as the old one.
-        // `equals` is used by design (see equals implementation is wrapper context like ExecutorCoroutineDispatcher)
-        if (newContext[ContinuationInterceptor] == oldContext[ContinuationInterceptor]) {
-            val newContinuation = RunContinuationDirect(newContext, cont)
-            return@sc block.startCoroutineUninterceptedOrReturn(newContinuation)
-        }
-        // slowest path otherwise -- use new interceptor, sync to its result via a
-        // full-blown instance of CancellableContinuation
-        val newContinuation = RunContinuationCoroutine(newContext, cont)
-        newContinuation.initCancellability()
-        block.startCoroutine(newContinuation)
-        newContinuation.getResult()
+public suspend fun <T> run(
+    context: CoroutineContext,
+    start: CoroutineStart = CoroutineStart.DEFAULT,
+    block: suspend () -> T
+): T = suspendCoroutineOrReturn sc@ { cont ->
+    val oldContext = cont.context
+    // fast path #1 if there is no change in the actual context:
+    if (context === oldContext || context is CoroutineContext.Element && oldContext[context.key] === context)
+        return@sc block.startCoroutineUninterceptedOrReturn(cont)
+    // compute new context
+    val newContext = oldContext + context
+    // fast path #2 if the result is actually the same
+    if (newContext === oldContext)
+        return@sc block.startCoroutineUninterceptedOrReturn(cont)
+    // fast path #3 if the new dispatcher is the same as the old one.
+    // `equals` is used by design (see equals implementation is wrapper context like ExecutorCoroutineDispatcher)
+    if (newContext[ContinuationInterceptor] == oldContext[ContinuationInterceptor]) {
+        val newContinuation = RunContinuationDirect(newContext, cont)
+        return@sc block.startCoroutineUninterceptedOrReturn(newContinuation)
     }
+    // slowest path otherwise -- use new interceptor, sync to its result via a
+    // full-blown instance of CancellableContinuation
+    require(!start.isLazy) { "$start start is not supported" }
+    val newContinuation = RunContinuationCoroutine(
+        parentContext = newContext,
+        resumeMode = if (start == CoroutineStart.ATOMIC) MODE_ATOMIC_DEFAULT else MODE_CANCELLABLE,
+        continuation = cont)
+    newContinuation.initCancellability() // attach to parent job
+    start(block, newContinuation)
+    newContinuation.getResult()
+}
+
+/** @suppress **Deprecated** */
+@Suppress("DeprecatedCallableAddReplaceWith") // todo: the warning is incorrectly shown, see KT-17917
+@Deprecated(message = "It is here for binary compatibility only", level=DeprecationLevel.HIDDEN)
+public suspend fun <T> run(context: CoroutineContext, block: suspend () -> T): T =
+    run(context, start = CoroutineStart.ATOMIC, block = block)
 
 /**
  * Runs new coroutine and **blocks** current thread _interruptibly_ until its completion.
@@ -146,7 +167,7 @@ private class LazyStandaloneCoroutine(
     private val block: suspend CoroutineScope.() -> Unit
 ) : StandaloneCoroutine(parentContext, active = false) {
     override fun onStart() {
-        block.startCoroutine(this, this)
+        block.startCoroutineCancellable(this, this)
     }
 }
 
@@ -157,8 +178,9 @@ private class RunContinuationDirect<in T>(
 
 private class RunContinuationCoroutine<in T>(
     override val parentContext: CoroutineContext,
+    resumeMode: Int,
     continuation: Continuation<T>
-) : CancellableContinuationImpl<T>(continuation, active = true)
+) : CancellableContinuationImpl<T>(continuation, defaultResumeMode = resumeMode, active = true)
 
 private class BlockingCoroutine<T>(
     override val parentContext: CoroutineContext,

@@ -4,25 +4,20 @@ Library support for Kotlin coroutines. This is a companion version for Kotlin 1.
 
 ## Modules
 
-Basic modules:
+* [kotlinx-coroutines-core](kotlinx-coroutines-core/README.md) -- core primitives to work with coroutines:
+  * `launch`, `async`, `produce`, `actor`, etc coroutine builders;
+  * `Job` and `Deferred` light-weight future with cancellation support;
+  * `CommonPool` and other coroutine contexts;
+  * `Channel` and `Mutex` communication and synchronization primitives;
+  * `delay`, `yield`, etc top-level suspending functions;
+  * `select` expression support and more.
+* [reactive](reactive/README.md) -- modules that provide builders and iteration support for various reactive streams libraries:
+  * Reactive Streams, RxJava 1.x and 2.x and Project Reactor. 
+* [ui](ui/README.md) -- modules that provide coroutine dispatchers for various single-threaded UI libraries:
+  * Android, JavaFx, and Swing.
+* [integration](integration/README.md) -- modules that provide integration with various asynchronous callback- and future-based libraries.
+  * JDK8 `CompletableFuture`, Guava `ListenableFuture`, and synchronous networking/IO.
 
-* [kotlinx-coroutines-core](kotlinx-coroutines-core) -- core primitives to work with coroutines. 
-* [kotlinx-coroutines-jdk8](kotlinx-coroutines-jdk8) -- additional libraries for JDK8 (or Android API level 24).
-* [kotlinx-coroutines-nio](kotlinx-coroutines-nio) -- extensions for asynchronous IO on JDK7+.
-
-Modules that provide builders and iteration support for various reactive streams libraries:
-
-* [kotlinx-coroutines-reactive](reactive/kotlinx-coroutines-reactive) -- utilities for [Reactive Streams](http://www.reactive-streams.org)
-* [kotlinx-coroutines-reactor](reactive/kotlinx-coroutines-reactor) -- utilities for [Reactor](https://projectreactor.io)
-* [kotlinx-coroutines-rx1](reactive/kotlinx-coroutines-rx1) -- utilities for [RxJava 1.x](https://github.com/ReactiveX/RxJava/tree/1.x)
-* [kotlinx-coroutines-rx2](reactive/kotlinx-coroutines-rx2) -- utilities for [RxJava 2.x](https://github.com/ReactiveX/RxJava)
-
-Modules that provide coroutine dispatchers for various single-threaded UI libraries:
-
-* [kotlinx-coroutines-android](ui/kotlinx-coroutines-android) -- `UI` context for Android applications.
-* [kotlinx-coroutines-javafx](ui/kotlinx-coroutines-javafx) -- `JavaFx` context for JavaFX UI applications.
-* [kotlinx-coroutines-swing](ui/kotlinx-coroutines-swing) -- `Swing` context for Swing UI applications.
- 
 ## Documentation
 
 * [Guide to kotlinx.coroutines by example](coroutines-guide.md) (**read it first**)
@@ -59,7 +54,7 @@ Add dependencies (you can also add other modules that you need):
 <dependency>
     <groupId>org.jetbrains.kotlinx</groupId>
     <artifactId>kotlinx-coroutines-core</artifactId>
-    <version>0.15</version>
+    <version>0.16</version>
 </dependency>
 ```
 
@@ -84,7 +79,7 @@ repositories {
 Add dependencies (you can also add other modules that you need):
 
 ```groovy
-compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.15'
+compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.16'
 ```
 
 And make sure that you use the right Kotlin version:

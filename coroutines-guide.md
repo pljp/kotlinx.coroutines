@@ -1,4 +1,4 @@
-<!--- INCLUDE .*/example-([a-z]+)-([0-9]+)\.kt 
+<!--- INCLUDE .*/example-([a-z]+)-([0-9a-z]+)\.kt 
 /*
  * Copyright 2016-2017 JetBrains s.r.o.
  *
@@ -1474,7 +1474,7 @@ ping Ball(hits=5)
 千のコルーチンを同じように千回実行してみましょう（100万回の実行）。
 さらなる比較のために完了時間も測定します。
 
-<!--- INCLUDE .*/example-sync-([0-9]+).kt
+<!--- INCLUDE .*/example-sync-([0-9a-z]+).kt
 import kotlin.coroutines.experimental.CoroutineContext
 import kotlin.system.measureTimeMillis
 -->
@@ -1507,7 +1507,7 @@ suspend fun massiveRun(context: CoroutineContext, action: suspend () -> Unit) {
 }
 ```
 
-<!--- INCLUDE .*/example-sync-([0-9]+).kt -->
+<!--- INCLUDE .*/example-sync-([0-9a-z]+).kt -->
 
 まず、マルチスレッド化された[CommonPool]コンテキストを使用して、共有ミュータブル変数をインクリメントする非常に単純なアクションから始めます。
 
@@ -1530,6 +1530,27 @@ Counter =
 -->
 
 最後に何がプリントされますか？ 千のコルーチンが同期なしで複数のスレッドから同時に `counter` をインクリメントするため、「Counter = 1000000」をプリントすることはほとんどありません。
+
+注：2つ以下のCPUを持つ古いシステムを使用している場合、 `CommonPool` がこの場合は1つのスレッドでのみ実行されているため、一貫して1000000が表示されます。 問題を再現するには、以下の変更を行う必要があります。
+
+```kotlin
+val mtContext = newFixedThreadPoolContext(2, "mtPool") // 明示的に2つのスレッドのコンテキストを定義する
+var counter = 0
+
+fun main(args: Array<String>) = runBlocking<Unit> {
+    massiveRun(mtContext) { // このサンプル以降CommonPoolの代わりに使用します
+        counter++
+    }
+    println("Counter = $counter")
+}
+```
+
+> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-01b.kt)で完全なコードを取得できます
+
+<!--- TEST LINES_START
+Completed 1000000 actions in
+Counter =
+-->
 
 ### Volatileは助けにならない
 
@@ -2058,8 +2079,7 @@ Channel was closed
 * [Coroutines design document (KEEP)](https://github.com/Kotlin/kotlin-coroutines/blob/master/kotlin-coroutines-informal.md)
 * [Full kotlinx.coroutines API reference](http://kotlin.github.io/kotlinx.coroutines)
 
-<!--- SITE_ROOT https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core -->
-<!--- DOCS_ROOT kotlinx-coroutines-core/target/dokka/kotlinx-coroutines-core -->
+<!--- MODULE kotlinx-coroutines-core -->
 <!--- INDEX kotlinx.coroutines.experimental -->
 [launch]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/launch.html
 [delay]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/delay.html
