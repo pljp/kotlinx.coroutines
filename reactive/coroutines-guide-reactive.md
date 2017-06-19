@@ -41,7 +41,7 @@ class GuideReactiveTest {
 * [kotlinx-coroutines-rx1](kotlinx-coroutines-rx1) -- [RxJava 1.x](https://github.com/ReactiveX/RxJava/tree/1.x)のユーティリティ
 * [kotlinx-coroutines-rx2](kotlinx-coroutines-rx2) -- [RxJava 2.x](https://github.com/ReactiveX/RxJava)のユーティリティ
 
-このガイドは主に[リアクティブストリーム](http://www.reactive-streams.org)仕様に基づいており、[RxJava 2.x](https://github.com/ReactiveX/RxJava) に基づくいくつかの例とともに `Publisher` インターフェースを使用しています。これはリアクティブストリーム仕様を実装しています。
+このガイドは主に[リアクティブストリーム](http://www.reactive-streams.org)仕様に基づいており、[RxJava 2.x](https://github.com/ReactiveX/RxJava) に基づくいくつかの例とともに `Publisher` インターフェイスを使用しています。これはリアクティブストリーム仕様を実装しています。
 
 提示されたすべての例を実行するために [`kotlinx.coroutines` プロジェクト](https://github.com/Kotlin/kotlinx.coroutines)をGitHubからあなたのワークステーションにクローンすることを歓迎します。
 これらはプロジェクトの[reactive/kotlinx-coroutines-rx2/src/test/kotlin/guide](kotlinx-coroutines-rx2/src/test/kotlin/guide)ディレクトリに含まれています。
@@ -61,7 +61,7 @@ class GuideReactiveTest {
   * [Take until](#take-until)
   * [Merge](#merge)
 * [コルーチンコンテキスト](#コルーチンコンテキスト)
-  * [Rxのスレッド](#Rxのスレッド)
+  * [Rxのスレッド](#rxのスレッド)
   * [コルーチンのスレッド](#コルーチンのスレッド)
   * [Rx observeOn](#rx-observeon)
   * [すべてを制御するコルーチンコンテキスト](#すべてを制御するコルーチンコンテキスト)
@@ -75,17 +75,17 @@ class GuideReactiveTest {
 
 ### 反復の基礎
 
-[チャンネル]は、以下のリアクティブストリームクラスと幾分似ています。
+[チャネル][Channel]は、以下のリアクティブストリームクラスと幾分似ています。
 
-* リアクティブストリーム[Publisher](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Publisher.java)、
-* Rx Java 1.x [Observable](http://reactivex.io/RxJava/javadoc/rx/Observable.html)、
-* `Publisher` を実装した Rx Java 2.x [Flowable](http://reactivex.io/RxJava/2.x/javadoc/)。
+* リアクティブストリームの[Publisher](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Publisher.java)、
+* Rx Java 1.x の[Observable](http://reactivex.io/RxJava/javadoc/rx/Observable.html)、
+* `Publisher` を実装した Rx Java 2.x の[Flowable](http://reactivex.io/RxJava/2.x/javadoc/)。
 
 これらはすべて無限または有限の要素（Rxで言うアイテム）の非同期ストリームを記述し、それらのすべてがバックプレッシャーをサポートします。
 
 ところで、 `Channel` は常にRx用語で言うところのアイテムの _ホット_ ストリームを表します。
 要素はプロデューサーコルーチンによってチャネルに送信され、コンシューマーコルーチンによって受信されます。
-すべての[receive][ReceiveChannel.receive]呼び出しは、チャネルから要素を消費します。
+すべての[receive][ReceiveChannel.receive]の呼び出しは、チャネルから要素を消費します。
 次の例でそれを説明しましょう。
 
 <!--- INCLUDE
@@ -95,7 +95,7 @@ import kotlinx.coroutines.experimental.channels.*
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    // 200ミリ秒間隔で遅延する1～3の数を生成するチャンネルを作成する
+    // 200ミリ秒間隔で遅延する1～3の数値を生成するチャンネルを作成する
     val source = produce<Int>(context) {
         println("Begin") // このコルーチンの開始を出力する
         for (x in 1..3) {
@@ -133,7 +133,7 @@ Again:
 
 [produce] _コルーチンビルダー_ が実行されると、コルーチンを1つ起動して要素のストリームを生成するため、"Begin" 行が1回だけプリントされたことに注目してください。
 生成された要素はすべて[ReceiveChannel.consumeEach][consumeEach]拡張関数で消費されます。 このチャンネルから要素をもう一度受け取る方法はありません。
-プロデューサーのコルーチンが終了し、もう一度受信しようとして何も受信できない場合、チャネルは閉じられます。
+チャネルはプロデューサーコルーチンが終了したときに閉じられ、もう一度受信しようとして何も受信できません。
 
 `kotlinx-coroutines-core` モジュールの[produce]の代わりに `kotlinx-coroutines-reactive` モジュールの[publish]コルーチンビルダーを使ってこのコードを書き直しましょう。
 コードは同じままですが、 `source` が[ReceiveChannel]型を使用していたところは、リアクティブストリームの[Publisher](http://www.reactive-streams.org/reactive-streams-1.0.0-javadoc/org/reactivestreams/Publisher.html)型になっています。
@@ -145,7 +145,7 @@ import kotlinx.coroutines.experimental.reactive.*
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    // create a publisher that produces numbers from 1 to 3 with 200ms delays between them
+    // 200ミリ秒間隔で遅延する1～3の数値を生成するパブリッシャーを作成する
     val source = publish<Int>(context) {  
     //           ^^^^^^^  <---  以前の例との違いはここ
         println("Begin") // このコルーチンの開始を出力する
@@ -189,9 +189,9 @@ Begin
 この例では、リアクティブストリームとチャネルの主な違いを強調しています。リアクティブストリームは高次の機能の概念です。
 チャネルは要素のストリームですが、リアクティブストリームは要素のストリームの生成方法に関するレシピを定義します。
 _サブスクリプション_ の要素の実際のストリームになります。
-各サブスクライバは、 `Publisher` の対応する実装がどのように機能するかに応じて、同じまたは異なる要素のストリームを受け取ることができます。
+各サブスクライバーは、 `Publisher` の対応する実装がどのように機能するかに応じて、同じまたは異なる要素のストリームを受け取ることができます。
 
-上記の例で使用されている[publich]コルーチンビルダーは、各サブスクリプションで新しいコルーチンを起動します。
+上記の例で使用されている[publish]コルーチンビルダーは、各サブスクリプションで新しいコルーチンを起動します。
 すべての[Publisher.consumeEach][org.reactivestreams.Publisher.consumeEach]呼び出しは、新鮮なサブスクリプションを作成します。
 このコードには2つあります。そのため、"Begin" が2回プリントされていることがわかります。
 
@@ -241,9 +241,9 @@ Finally
 
 <!--- TEST -->
  
-明示的な `open` を指定すると、対応するサブスクリプションを[close][SubscriptionReceiveChannel.close]して、ソースからの登録を解除する必要があります。
-しかし、明示的に `close` を呼び出のではなく、このコードはKotlinの標準ライブラリの[use](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/use.html)関数に頼っています。
-インストールされた[doFinally](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#doFinally(io.reactivex.functions.Action))リスナーは、サブスクリプションが実際に閉じられていることを確認するために "Finally" を表示します。
+明示的に `open` すると、対応するサブスクリプションを[close][SubscriptionReceiveChannel.close]して、ソースからの登録を解除しなければなりません。
+しかし、明示的に `close` を呼び出すのではなく、このコードはKotlinの標準ライブラリの[use](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/use.html)関数に頼っています。
+インストールされた[doFinally](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#doFinally(io.reactivex.functions.Action))リスナーは、サブスクリプションが実際に閉じられていることを確認するために "Finally" をプリントします。
 
 パブリッシャーが出力したすべてのアイテムに対して反復処理を実行する場合、`consumeEach` によって自動的に閉じられているので明示的な `close` を使う必要はありません。
 
@@ -326,7 +326,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 > [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-05.kt)で完全なコードを取得できます
 
-このコードの出力は、コルーチンでバックプレッシャがどのように機能するかをうまく示しています。
+このコードの出力は、コルーチンでバックプレッシャーがどのように機能するかをうまく示しています。
 
 ```text
 Sent 1
@@ -506,7 +506,7 @@ Rxのようなフル機能のリアクティブストリームライブラリには、ストリームを作成、変換
 
 ### Range
 
-リアクティブストリームの `Publisher` インターフェースのために、[range](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#range(int,%20int))演算子の独自の実装を展開しましょう。
+リアクティブストリームの `Publisher` インターフェイスのために、[range](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#range(int,%20int))演算子の独自の実装を展開しましょう。
 リアクティブストリーム用のこの演算子の非同期のきれいな実装については、[このブログ記事](http://akarnokd.blogspot.ru/2017/03/java-9-flow-api-asynchronous-integer.html)で説明しています。
 それは多くのコードを必要とします。
 コルーチンを使ったコードを以下に示します。
@@ -548,7 +548,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 <!--- TEST -->
 
-### [filterとmapの融合
+### filterとmapの融合
 
 [filter](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#filter(io.reactivex.functions.Predicate))や[map](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#map(io.reactivex.functions.Function))のようなリアクティブ演算子は、コルーチンで実装するのは簡単です。
 ちょっとしたチャレンジとショーケースのために、それらを単一の `fusedFilterMap` 演算子に組み合わせましょう。
@@ -766,7 +766,7 @@ fun main(args: Array<String>) {
 }
 ```
 
-> [ここ]で完全なコードを取得できます(kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-01.kt)
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-01.kt)で完全なコードを取得できます
 
 `rangeWithIntervalRx` 演算子に明示的に[Schedulers.computation()](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/schedulers/Schedulers.html#computation())スケジューラーを渡しています。これはRx計算スレッドプールで実行されます。
 出力は次のようになります。
@@ -903,16 +903,6 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 ### Unconfinedコンテキスト
 
-Most Rx operators do not have any specific thread (scheduler) associated with them and are working 
-in whatever thread that they happen to be invoked in. We've seen it on the example of `subscribe` operator 
-in the [threads with Rx](#threads-with-rx) section.
- 
-In the world of coroutines, [Unconfined] context serves a similar role. Let us modify our previous example,
-but instead of iterating over the source `Flowable` from the `runBlocking` coroutine that is confined 
-to the main thread, we launch a new coroutine in `Unconfined` context, while the main coroutine
-simply waits its completion using [Job.join]:
-
-
 ほとんどのRx演算子は特定のスレッド（スケジューラー）に関連付けられておらず、呼び出されたスレッドで動作します。
 [Rxのスレッド](#Rxのスレッド)セクションの `subscribe` 演算子の例で見てきました。
 
@@ -961,9 +951,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 操作のスタックローカリティ性の向上とスケジューリングのオーバーヘッドのために、特定のテストの全体的なパフォーマンスが向上する場合がありますが、スタックが深くなり、使用しているコードの非同期性を推測するのが難しくなります。
 
 コルーチンがチャネルに要素を送ると、[send][SendChannel.send]を呼び出したスレッドは[Unconfined]ディスパッチャーでコルーチンのコードの実行を開始することがあります。
-`send` を呼び出す元のプロデューサコルーチンは、unconfinedのコンシューマーコルーチンが次の中断ポイントに達するまで一時停止されます。
+`send` を呼び出す元のプロデューサーコルーチンは、unconfinedのコンシューマーコルーチンが次の中断ポイントに達するまで一時停止されます。
 これは、スレッドシフト演算子がない場合のRx世界でのロックステップのシングルスレッドの `onNext` の実行と非常によく似ています。
-オペレータは通常、非常に小さなチャンクで作業をしており、複雑な処理のために多くの演算子を結合する必要があるため、Rxの通常のデフォルトです。
+オペレータは通常、非常に小さなチャンクで作業をしており、複雑な処理のために多くの演算子を結合する必要があるため、これはRxの通常のデフォルトです。
 しかし、コルーチンではこれが異常です。コルーチンでは、任意の複雑な処理を行うことができます。
 通常、複数のワーカーコルーチン間でファンインとファンアウトを持つ複雑なパイプラインのストリーム処理コルーチンをチェーンするだけで済みます。
 
