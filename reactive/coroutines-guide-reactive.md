@@ -29,64 +29,64 @@ import org.junit.Test
 class GuideReactiveTest {
 -->
 
-# �R���[�`���ɂ�郊�A�N�e�B�u�X�g���[���̃K�C�h
+# コルーチンによるリアクティブストリームのガイド
 
-���̃K�C�h�ł́AKotlin�R���[�`���ƃ��A�N�e�B�u�X�g���[���̏d�v�ȈႢ�ɂ��Đ������A�������ꏏ�Ɏg�p���Ă��ǂ����ʂ𓾂���@�������܂��B
-[kotlinx.coroutines�̃K�C�h](../coroutines-guide.md)�ŃJ�o�[����Ă����{�I�ȃR���[�`���̊T�O�Ɋ���Ă��Ȃ��Ă����v�ł��B ���A�N�e�B�u�X�g���[���ɐ��ʂ��Ă���ꍇ�́A���̃K�C�h���R���[�`���̐��E�ւ̂��ǂ������ɂȂ邩������܂���B
+このガイドでは、Kotlinコルーチンとリアクティブストリームの重要な違いについて説明し、これらを一緒に使用してより良い結果を得る方法を示します。
+[kotlinx.coroutinesのガイド](../coroutines-guide.md)でカバーされている基本的なコルーチンの概念に慣れていなくても大丈夫です。 リアクティブストリームに精通している場合は、このガイドがコルーチンの世界へのより良い導入になるかもしれません。
 
-`kotlinx.coroutines` �v���W�F�N�g�ɂ́A���A�N�e�B�u�X�g���[���Ɋ֘A���邢�����̃��W���[��������܂��B
+`kotlinx.coroutines` プロジェクトには、リアクティブストリームに関連するいくつかのモジュールがあります。
 
-* [kotlinx-coroutines-reactive](kotlinx-coroutines-reactive) -- [���A�N�e�B�u�X�g���[��](http://www.reactive-streams.org)�̃��[�e�B���e�B
-* [kotlinx-coroutines-reactor](kotlinx-coroutines-reactor) -- [Reactor](https://projectreactor.io)�̃��[�e�B���e�B
-* [kotlinx-coroutines-rx1](kotlinx-coroutines-rx1) -- [RxJava 1.x](https://github.com/ReactiveX/RxJava/tree/1.x)�̃��[�e�B���e�B
-* [kotlinx-coroutines-rx2](kotlinx-coroutines-rx2) -- [RxJava 2.x](https://github.com/ReactiveX/RxJava)�̃��[�e�B���e�B
+* [kotlinx-coroutines-reactive](kotlinx-coroutines-reactive) -- [リアクティブストリーム](http://www.reactive-streams.org)のユーティリティ
+* [kotlinx-coroutines-reactor](kotlinx-coroutines-reactor) -- [Reactor](https://projectreactor.io)のユーティリティ
+* [kotlinx-coroutines-rx1](kotlinx-coroutines-rx1) -- [RxJava 1.x](https://github.com/ReactiveX/RxJava/tree/1.x)のユーティリティ
+* [kotlinx-coroutines-rx2](kotlinx-coroutines-rx2) -- [RxJava 2.x](https://github.com/ReactiveX/RxJava)のユーティリティ
 
-���̃K�C�h�͎��[���A�N�e�B�u�X�g���[��](http://www.reactive-streams.org)�d�l�Ɋ�Â��Ă���A[RxJava 2.x](https://github.com/ReactiveX/RxJava) �Ɋ�Â��������̗�ƂƂ��� `Publisher` �C���^�[�t�F�C�X���g�p���Ă��܂��B����̓��A�N�e�B�u�X�g���[���d�l���������Ă��܂��B
+このガイドは主に[リアクティブストリーム](http://www.reactive-streams.org)仕様に基づいており、[RxJava 2.x](https://github.com/ReactiveX/RxJava) に基づくいくつかの例とともに `Publisher` インターフェイスを使用しています。これはリアクティブストリーム仕様を実装しています。
 
-�񎦂��ꂽ���ׂĂ̗�����s���邽�߂� [`kotlinx.coroutines` �v���W�F�N�g](https://github.com/Kotlin/kotlinx.coroutines)��GitHub���炠�Ȃ��̃��[�N�X�e�[�V�����ɃN���[�����邱�Ƃ����}���܂��B
-�����̓v���W�F�N�g��[reactive/kotlinx-coroutines-rx2/src/test/kotlin/guide](kotlinx-coroutines-rx2/src/test/kotlin/guide)�f�B���N�g���Ɋ܂܂�Ă��܂��B
+提示されたすべての例を実行するために [`kotlinx.coroutines` プロジェクト](https://github.com/Kotlin/kotlinx.coroutines)をGitHubからあなたのワークステーションにクローンすることを歓迎します。
+これらはプロジェクトの[reactive/kotlinx-coroutines-rx2/src/test/kotlin/guide](kotlinx-coroutines-rx2/src/test/kotlin/guide)ディレクトリに含まれています。
  
-## �ڎ�
+## 目次
 
 <!--- TOC -->
 
-* [���A�N�e�B�u�X�g���[���ƃ`���l���̈Ⴂ](#���A�N�e�B�u�X�g���[���ƃ`���l���̈Ⴂ)
-  * [�����̊�b](#�����̊�b)
-  * [�T�u�X�N���v�V�����ƃL�����Z��](#�T�u�X�N���v�V�����ƃL�����Z��)
-  * [�o�b�N�v���b�V���[](#�o�b�N�v���b�V���[)
-  * [Rx Subject �� BroadcastChannel](#rx-subject-��-broadcastchannel)
-* [���Z�q](#���Z�q)
+* [リアクティブストリームとチャネルの違い](#リアクティブストリームとチャネルの違い)
+  * [反復の基礎](#反復の基礎)
+  * [サブスクリプションとキャンセル](#サブスクリプションとキャンセル)
+  * [バックプレッシャー](#バックプレッシャー)
+  * [Rx Subject と BroadcastChannel](#rx-subject-と-broadcastchannel)
+* [演算子](#演算子)
   * [Range](#range)
-  * [filter��map�̗Z��](#filter��map�̗Z��)
+  * [filterとmapの融合](#filterとmapの融合)
   * [Take until](#take-until)
   * [Merge](#merge)
-* [�R���[�`���R���e�L�X�g](#�R���[�`���R���e�L�X�g)
-  * [Rx�̃X���b�h](#rx�̃X���b�h)
-  * [�R���[�`���̃X���b�h](#�R���[�`���̃X���b�h)
+* [コルーチンコンテキスト](#コルーチンコンテキスト)
+  * [Rxのスレッド](#rxのスレッド)
+  * [コルーチンのスレッド](#コルーチンのスレッド)
   * [Rx observeOn](#rx-observeon)
-  * [���ׂĂ𐧌䂷��R���[�`���R���e�L�X�g](#���ׂĂ𐧌䂷��R���[�`���R���e�L�X�g)
-  * [Unconfined�R���e�L�X�g](#unconfined�R���e�L�X�g)
+  * [すべてを制御するコルーチンコンテキスト](#すべてを制御するコルーチンコンテキスト)
+  * [Unconfinedコンテキスト](#unconfinedコンテキスト)
 
 <!--- END_TOC -->
 
-## ���A�N�e�B�u�X�g���[���ƃ`���l���̈Ⴂ
+## リアクティブストリームとチャネルの違い
 
-���̃Z�N�V�����ł́A���A�N�e�B�u�X�g���[���ƃR���[�`������b�Ƃ���`���l���̎�ȈႢ�̊T�v��������܂��B
+このセクションでは、リアクティブストリームとコルーチンを基礎とするチャネルの主な違いの概要を説明します。
 
-### �����̊�b
+### 反復の基礎
 
-[�`���l��][Channel]�́A�ȉ��̃��A�N�e�B�u�X�g���[���N���X�Ɗ������Ă��܂��B
+[チャネル][Channel]は、以下のリアクティブストリームクラスと幾分似ています。
 
-* ���A�N�e�B�u�X�g���[����[Publisher](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Publisher.java)�A
-* Rx Java 1.x ��[Observable](http://reactivex.io/RxJava/javadoc/rx/Observable.html)�A
-* `Publisher` ���������� Rx Java 2.x ��[Flowable](http://reactivex.io/RxJava/2.x/javadoc/)�B
+* リアクティブストリームの[Publisher](https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Publisher.java)、
+* Rx Java 1.x の[Observable](http://reactivex.io/RxJava/javadoc/rx/Observable.html)、
+* `Publisher` を実装した Rx Java 2.x の[Flowable](http://reactivex.io/RxJava/2.x/javadoc/)。
 
-�����͂��ׂĖ����܂��͗L���̗v�f�iRx�Ō����A�C�e���j�̔񓯊��X�g���[�����L�q���A�����̂��ׂĂ��o�b�N�v���b�V���[���T�|�[�g���܂��B
+これらはすべて無限または有限の要素（Rxで言うアイテム）の非同期ストリームを記述し、それらのすべてがバックプレッシャーをサポートします。
 
-�Ƃ���ŁA `Channel` �͏��Rx�p��Ō����Ƃ���̃A�C�e���� _�z�b�g_ �X�g���[����\���܂��B
-�v�f�̓v���f���[�T�[�R���[�`���ɂ���ă`���l���ɑ��M����A�R���V���[�}�[�R���[�`���ɂ���Ď�M����܂��B
-���ׂĂ�[receive][ReceiveChannel.receive]�̌Ăяo���́A�`���l������v�f������܂��B
-���̗�ł����������܂��傤�B
+ところで、 `Channel` は常にRx用語で言うところのアイテムの _ホット_ ストリームを表します。
+要素はプロデューサーコルーチンによってチャネルに送信され、コンシューマーコルーチンによって受信されます。
+すべての[receive][ReceiveChannel.receive]の呼び出しは、チャネルから要素を消費します。
+次の例でそれを説明しましょう。
 
 <!--- INCLUDE
 import kotlinx.coroutines.experimental.*
@@ -95,30 +95,30 @@ import kotlinx.coroutines.experimental.channels.*
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    // 200�~���b�Ԋu�Œx������1�`3�̐��l�𐶐�����`�����l�����쐬����
+    // 200ミリ秒間隔で遅延する1～3の数値を生成するチャンネルを作成する
     val source = produce<Int>(context) {
-        println("Begin") // ���̃R���[�`���̊J�n���o�͂���
+        println("Begin") // このコルーチンの開始を出力する
         for (x in 1..3) {
-            delay(200) // 200�~���b�҂�
-            send(x) // �`���l���ɐ��l x �𑗂�
+            delay(200) // 200ミリ秒待つ
+            send(x) // チャネルに数値 x を送る
         }
     }
-    // �\�[�X����̗v�f���v�����g����
+    // ソースからの要素をプリントする
     println("Elements:")
-    source.consumeEach { // �v�f�������
+    source.consumeEach { // 要素を消費する
         println(it)
     }
-    // �\�[�X����Ăїv�f���v�����g����
+    // ソースから再び要素をプリントする
     println("Again:")
-    source.consumeEach { // �v�f�������
+    source.consumeEach { // 要素を消費する
         println(it)
     }
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-01.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-01.kt)で完全なコードを取得できます
 
-���̃R�[�h�́A���̏o�͂𐶐����܂��B
+このコードは、次の出力を生成します。
 
 ```text
 Elements:
@@ -131,12 +131,12 @@ Again:
 
 <!--- TEST -->
 
-[produce] _�R���[�`���r���_�[_ �����s�����ƁA�R���[�`����1�N�����ėv�f�̃X�g���[���𐶐����邽�߁A"Begin" �s��1�񂾂��v�����g���ꂽ���Ƃɒ��ڂ��Ă��������B
-�������ꂽ�v�f�͂��ׂ�[ReceiveChannel.consumeEach][consumeEach]�g���֐��ŏ����܂��B ���̃`�����l������v�f��������x�󂯎����@�͂���܂���B
-�`���l���̓v���f���[�T�[�R���[�`�����I�������Ƃ��ɕ����A������x��M���悤�Ƃ��ĉ�����M�ł��܂���B
+[produce] _コルーチンビルダー_ が実行されると、コルーチンを1つ起動して要素のストリームを生成するため、"Begin" 行が1回だけプリントされたことに注目してください。
+生成された要素はすべて[ReceiveChannel.consumeEach][consumeEach]拡張関数で消費されます。 このチャンネルから要素をもう一度受け取る方法はありません。
+チャネルはプロデューサーコルーチンが終了したときに閉じられ、もう一度受信しようとして何も受信できません。
 
-`kotlinx-coroutines-core` ���W���[����[produce]�̑���� `kotlinx-coroutines-reactive` ���W���[����[publish]�R���[�`���r���_�[���g���Ă��̃R�[�h�����������܂��傤�B
-�R�[�h�͓����܂܂ł����A `source` ��[ReceiveChannel]�^���g�p���Ă����Ƃ���́A���A�N�e�B�u�X�g���[����[Publisher](http://www.reactive-streams.org/reactive-streams-1.0.0-javadoc/org/reactivestreams/Publisher.html)�^�ɂȂ��Ă��܂��B
+`kotlinx-coroutines-core` モジュールの[produce]の代わりに `kotlinx-coroutines-reactive` モジュールの[publish]コルーチンビルダーを使ってこのコードを書き直しましょう。
+コードは同じままですが、 `source` が[ReceiveChannel]型を使用していたところは、リアクティブストリームの[Publisher](http://www.reactive-streams.org/reactive-streams-1.0.0-javadoc/org/reactivestreams/Publisher.html)型になっています。
 
 <!--- INCLUDE
 import kotlinx.coroutines.experimental.*
@@ -145,31 +145,31 @@ import kotlinx.coroutines.experimental.reactive.*
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    // 200�~���b�Ԋu�Œx������1�`3�̐��l�𐶐�����p�u���b�V���[���쐬����
+    // 200ミリ秒間隔で遅延する1～3の数値を生成するパブリッシャーを作成する
     val source = publish<Int>(context) {  
-    //           ^^^^^^^  <---  �ȑO�̗�Ƃ̈Ⴂ�͂���
-        println("Begin") // ���̃R���[�`���̊J�n���o�͂���
+    //           ^^^^^^^  <---  以前の例との違いはここ
+        println("Begin") // このコルーチンの開始を出力する
         for (x in 1..3) {
-            delay(200) // 200�~���b�҂�
-            send(x) // �`���l���ɐ��l x �𑗂�
+            delay(200) // 200ミリ秒待つ
+            send(x) // チャネルに数値 x を送る
         }
     }
-    // �\�[�X����̗v�f���v�����g����
+    // ソースからの要素をプリントする
     println("Elements:")
-    source.consumeEach { // �v�f�������
+    source.consumeEach { // 要素を消費する
         println(it)
     }
-    // �\�[�X����Ăїv�f���v�����g����
+    // ソースから再び要素をプリントする
     println("Again:")
-    source.consumeEach { // �v�f�������
+    source.consumeEach { // 要素を消費する
         println(it)
     }
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-02.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-02.kt)で完全なコードを取得できます
 
-���x�͂��̃R�[�h�̏o�͂����̂悤�ɕς��܂��B
+今度はこのコードの出力が次のように変わります。
 
 ```text
 Elements:
@@ -186,24 +186,24 @@ Begin
 
 <!--- TEST -->
 
-���̗�ł́A���A�N�e�B�u�X�g���[���ƃ`���l���̎�ȈႢ���������Ă��܂��B���A�N�e�B�u�X�g���[���͍����̋@�\�̊T�O�ł��B
-�`���l���͗v�f�̃X�g���[���ł����A���A�N�e�B�u�X�g���[���͗v�f�̃X�g���[���̐������@�Ɋւ��郌�V�s���`���܂��B
-_�T�u�X�N���v�V����_ �̗v�f�̎��ۂ̃X�g���[���ɂȂ�܂��B
-�e�T�u�X�N���C�o�[�́A `Publisher` �̑Ή�����������ǂ̂悤�ɋ@�\���邩�ɉ����āA�����܂��͈قȂ�v�f�̃X�g���[�����󂯎�邱�Ƃ��ł��܂��B
+この例では、リアクティブストリームとチャネルの主な違いを強調しています。リアクティブストリームは高次の機能の概念です。
+チャネルは要素のストリームですが、リアクティブストリームは要素のストリームの生成方法に関するレシピを定義します。
+_サブスクリプション_ の要素の実際のストリームになります。
+各サブスクライバーは、 `Publisher` の対応する実装がどのように機能するかに応じて、同じまたは異なる要素のストリームを受け取ることができます。
 
-��L�̗�Ŏg�p����Ă���[publish]�R���[�`���r���_�[�́A�e�T�u�X�N���v�V�����ŐV�����R���[�`�����N�����܂��B
-���ׂĂ�[Publisher.consumeEach][org.reactivestreams.Publisher.consumeEach]�Ăяo���́A�V�N�ȃT�u�X�N���v�V�������쐬���܂��B
-���̃R�[�h�ɂ�2����܂��B���̂��߁A"Begin" ��2��v�����g����Ă��邱�Ƃ��킩��܂��B
+上記の例で使用されている[publish]コルーチンビルダーは、各サブスクリプションで新しいコルーチンを起動します。
+すべての[Publisher.consumeEach][org.reactivestreams.Publisher.consumeEach]呼び出しは、新鮮なサブスクリプションを作成します。
+このコードには2つあります。そのため、"Begin" が2回プリントされていることがわかります。
 
-Rx�p��ł́A����� _�R�[���h_ �p�u���b�V���[�ƌĂ΂�܂��B�����̕W��Rx���Z�q���R�[���h�X�g���[���𐶐����܂��B
-�R���[�`�����炻���𔽕����邱�Ƃ��ł��A���ׂẴT�u�X�N���v�V�����͓����v�f�̃X�g���[���𐶐����܂��B
+Rx用語では、これは _コールド_ パブリッシャーと呼ばれます。多くの標準Rx演算子もコールドストリームを生成します。
+コルーチンからそれらを反復することができ、すべてのサブスクリプションは同じ要素のストリームを生成します。
 
-> Rx [publish](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#publish())���Z�q��[connect](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/flowables/ConnectableFlowable.html#connect())���\�b�h���g���āA�`�����l���Ō����̂Ɠ����U�镑�����Č��ł��܂��B
+> Rx [publish](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#publish())演算子と[connect](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/flowables/ConnectableFlowable.html#connect())メソッドを使って、チャンネルで見たのと同じ振る舞いを再現できます。
 
-### �T�u�X�N���v�V�����ƃL�����Z��
+### サブスクリプションとキャンセル
 
-�O�̃Z�N�V�����̗�ł́A `source.consumeEach { ... }` �X�j�y�b�g���g�p���ăT�u�X�N���v�V�������J���A�������炷�ׂĂ̗v�f���󂯎���Ă��܂��B
-�`�����l������󂯎���Ă���v�f���ǂ��������邩�������ƃR���g���[������K�v������ꍇ�́A���̗�̂悤��[Publisher.open][org.reactivestreams.Publisher.open]���g�p�ł��܂��B
+前のセクションの例では、 `source.consumeEach { ... }` スニペットを使用してサブスクリプションを開き、そこからすべての要素を受け取っています。
+チャンネルから受け取っている要素をどう処理するかをもっとコントロールする必要がある場合は、次の例のように[Publisher.open][org.reactivestreams.Publisher.open]を使用できます。
 
 <!--- INCLUDE
 import io.reactivex.*
@@ -213,23 +213,23 @@ import kotlinx.coroutines.experimental.reactive.*
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val source = Flowable.range(1, 5) // 5�̐��l�̃����W
-        .doOnSubscribe { println("OnSubscribe") } // ���@��񋟂���
-        .doFinally { println("Finally") }         // ... �����N���Ă��邩
+    val source = Flowable.range(1, 5) // 5つの数値のレンジ
+        .doOnSubscribe { println("OnSubscribe") } // 洞察を提供する
+        .doFinally { println("Finally") }         // ... 何が起きているか
     var cnt = 0 
-    source.open().use { channel -> // �\�[�X�̃`���l�����J��
-        for (x in channel) { // �������ă`���l������v�f���󂯎��
+    source.open().use { channel -> // ソースのチャネルを開く
+        for (x in channel) { // 反復してチャネルから要素を受け取る
             println(x)
-            if (++cnt >= 3) break // 3�̗v�f���v�����g�����璆�~����
+            if (++cnt >= 3) break // 3つの要素をプリントしたら中止する
         }
-        // ���̃R�[�h�u���b�N����������ƁA `use` ���`���l�������
+        // このコードブロックが完了すると、 `use` がチャネルを閉じる
     }
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-03.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-03.kt)で完全なコードを取得できます
 
-���̏o�͂���������܂��B
+次の出力が生成されます。
 
 ```text
 OnSubscribe
@@ -241,11 +241,11 @@ Finally
 
 <!--- TEST -->
  
-�����I�� `open` ����ƁA�Ή�����T�u�X�N���v�V������[close][SubscriptionReceiveChannel.close]���āA�\�[�X����̓o�^���������Ȃ���΂Ȃ�܂���B
-�������A�����I�� `close` ���Ăяo���̂ł͂Ȃ��A���̃R�[�h��Kotlin�̕W�����C�u������[use](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/use.html)�֐��ɗ����Ă��܂��B
-�C���X�g�[�����ꂽ[doFinally](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#doFinally(io.reactivex.functions.Action))���X�i�[�́A�T�u�X�N���v�V���������ۂɕ����Ă��邱�Ƃ��m�F���邽�߂� "Finally" ���v�����g���܂��B
+明示的に `open` すると、対応するサブスクリプションを[close][SubscriptionReceiveChannel.close]して、ソースからの登録を解除しなければなりません。
+しかし、明示的に `close` を呼び出すのではなく、このコードはKotlinの標準ライブラリの[use](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/use.html)関数に頼っています。
+インストールされた[doFinally](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#doFinally(io.reactivex.functions.Action))リスナーは、サブスクリプションが実際に閉じられていることを確認するために "Finally" をプリントします。
 
-�p�u���b�V���[���o�͂������ׂẴA�C�e���ɑ΂��Ĕ������������s����ꍇ�A`consumeEach` �ɂ���Ď����I�ɕ����Ă���̂Ŗ����I�� `close` ���g���K�v�͂���܂���B
+パブリッシャーが出力したすべてのアイテムに対して反復処理を実行する場合、`consumeEach` によって自動的に閉じられているので明示的な `close` を使う必要はありません。
 
 <!--- INCLUDE
 import io.reactivex.*
@@ -255,17 +255,17 @@ import kotlinx.coroutines.experimental.reactive.*
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val source = Flowable.range(1, 5) // 5�̐��l�̃����W
-        .doOnSubscribe { println("OnSubscribe") } // ���@��񋟂���
-        .doFinally { println("Finally") }         // ... �����N���Ă��邩
-    // �\�[�X�����ׂĔ�������
+    val source = Flowable.range(1, 5) // 5つの数値のレンジ
+        .doOnSubscribe { println("OnSubscribe") } // 洞察を提供する
+        .doFinally { println("Finally") }         // ... 何が起きているか
+    // ソースをすべて反復する
     source.consumeEach { println(it) }
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-04.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-04.kt)で完全なコードを取得できます
 
-���̏o�͂������܂��B
+次の出力が得られます。
 
 ```text
 OnSubscribe
@@ -279,23 +279,23 @@ Finally
 
 <!--- TEST -->
 
-�Ō�̗v�f "5" �̑O�� "Finally" ���ǂ̂悤�ɏo�͂���邩�ɒ��ӂ��Ă��������B
-����́A���̗�� `main` �֐���[runBlocking]�R���[�`���r���_�[�Ŏn�܂�R���[�`���ł��邽�߂ɋN����܂��B
-���C���R���[�`���� `source.consumeEach { ... }` �����g���ă`���l���Ŏ�M���܂��B
-���C���R���[�`���́A�\�[�X���A�C�e�����o�͂���̂�҂� _���f_ ����܂��B
-�Ō�̃A�C�e���� `Flowable.range(1�A5)` �ɂ���ďo�͂����ƃ��C���R���[�`���� _�ĊJ_ ����A���C���X���b�h�Ƀf�B�X�p�b�`����čŌ�̗v�f����Ńv�����g���܂��B�\�[�X�͊������A"Finally" ���v�����g���܂��B
+最後の要素 "5" の前に "Finally" がどのように出力されるかに注意してください。
+これは、この例の `main` 関数が[runBlocking]コルーチンビルダーで始まるコルーチンであるために起こります。
+メインコルーチンは `source.consumeEach { ... }` 式を使ってチャネルで受信します。
+メインコルーチンは、ソースがアイテムを出力するのを待つ間 _中断_ されます。
+最後のアイテムが `Flowable.range(1、5)` によって出力されるとメインコルーチンが _再開_ され、メインスレッドにディスパッチされて最後の要素を後でプリントします。ソースは完了し、"Finally" をプリントします。
 
-### �o�b�N�v���b�V���[
+### バックプレッシャー
 
-�o�b�N�v���b�V���[�́A���A�N�e�B�u�X�g���[���̒��ōł������[�����G�ȓ�����1�ł��B
-�R���[�`���� _���f_ ���邱�Ƃ��ł��A�o�b�N�v���b�V���[���������邽�߂̎��R�ȓ�����񋟂��܂��B
+バックプレッシャーは、リアクティブストリームの中で最も興味深く複雑な特徴の1つです。
+コルーチンは _中断_ することができ、バックプレッシャーを処理するための自然な答えを提供します。
 
-Rx Java 2.x�ł́A�o�b�N�v���b�V���[�Ή��N���X��[Flowable](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html)�ƌĂ΂�܂��B
-���̗�ł́A `kotlinx-coroutines-rx2` ���W���[����[rxFlowable]�R���[�`���r���_�[���g�p���āA1����3�܂ł�3�̐����𑗐M����flowable���`���܂��B
-[send][SendChannel.send]�T�X�y���h�֐����Ăяo���O�ɏo�͂Ƀ��b�Z�[�W���v�����g���A���̑�����@�𒲂ׂ邱�Ƃ��ł��܂��B
+Rx Java 2.xでは、バックプレッシャー対応クラスは[Flowable](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html)と呼ばれます。
+次の例では、 `kotlinx-coroutines-rx2` モジュールの[rxFlowable]コルーチンビルダーを使用して、1から3までの3つの整数を送信するflowableを定義します。
+[send][SendChannel.send]サスペンド関数を呼び出す前に出力にメッセージをプリントし、その操作方法を調べることができます。
 
-�����̓��C���X���b�h�̃R���e�L�X�g�Ő�������܂����A�T�u�X�N���v�V�����̓T�C�Y1�̃o�b�t�@��Rx [observeOn](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#observeOn(io.reactivex.Scheduler,%20boolean,%20int))���Z�q���g�p���ĕʂ̃X���b�h�Ɉڂ���܂��B
-�T�u�X�N���C�o�[�͒x���ł��B `Thread.sleep` ���g���ăV�~�����[�g����e�A�C�e������������̂�500�~���b������܂��B
+整数はメインスレッドのコンテキストで生成されますが、サブスクリプションはサイズ1のバッファでRx [observeOn](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#observeOn(io.reactivex.Scheduler,%20boolean,%20int))演算子を使用して別のスレッドに移されます。
+サブスクライバーは遅いです。 `Thread.sleep` を使ってシミュレートされ各アイテムを処理するのに500ミリ秒かかります。
 
 <!--- INCLUDE
 import kotlinx.coroutines.experimental.*
@@ -305,28 +305,28 @@ import io.reactivex.schedulers.Schedulers
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> { 
-    // �R���[�`�� - ���C���X���b�h�R���e�L�X�g�ɂ�����v�f�̍����v���f���[�T�[
+    // コルーチン - メインスレッドコンテキストにおける要素の高速プロデューサー
     val source = rxFlowable(context) {
         for (x in 1..3) {
-            send(x) // ����̓T�X�y���h�֐�
-            println("Sent $x") // �A�C�e��������ɑ��M���ꂽ��Ƀv�����g����
+            send(x) // これはサスペンド関数
+            println("Sent $x") // アイテムが正常に送信された後にプリントする
         }
     }
-    // Rx���g���ĕʂ̃X���b�h�̒ᑬ�̃T�u�X�N���C�o�[�ōw�ǂ���
+    // Rxを使って別のスレッドの低速のサブスクライバーで購読する
     source
-        .observeOn(Schedulers.io(), false, 1) // 1�A�C�e�����̃o�b�t�@�[�T�C�Y���w��
+        .observeOn(Schedulers.io(), false, 1) // 1アイテム分のバッファーサイズを指定
         .doOnComplete { println("Complete") }
         .subscribe { x ->
-            Thread.sleep(500) // �e�A�C�e������������̂�500�~���b
+            Thread.sleep(500) // 各アイテムを処理するのに500ミリ秒
             println("Processed $x")
         }
-    delay(2000) // ���b�ԃ��C���X���b�h�𒆒f
+    delay(2000) // 数秒間メインスレッドを中断
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-05.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-05.kt)で完全なコードを取得できます
 
-���̃R�[�h�̏o�͂́A�R���[�`���Ńo�b�N�v���b�V���[���ǂ̂悤�ɋ@�\���邩�����܂������Ă��܂��B
+このコードの出力は、コルーチンでバックプレッシャーがどのように機能するかをうまく示しています。
 
 ```text
 Sent 1
@@ -340,14 +340,14 @@ Complete
 
 <!--- TEST -->
 
-�����ł́A�v���f���[�T�[�̃R���[�`�����ŏ��̗v�f���o�b�t�@�ɓ���A�ʂ̗v�f�𑗐M���悤�Ƃ��Ă���Ԓ��f����Ă��邱�Ƃ��킩��܂��B
-�R���V���[�}�[���ŏ��̃A�C�e��������������ł̂݁A�v���f���[�T�[��2�Ԗڂ̃A�C�e���𑗐M���čĊJ���܂��B
+ここでは、プロデューサーのコルーチンが最初の要素をバッファに入れ、別の要素を送信しようとしている間中断されていることがわかります。
+コンシューマーが最初のアイテムを処理した後でのみ、プロデューサーは2番目のアイテムを送信して再開します。
 
-### Rx Subject �� BroadcastChannel
+### Rx Subject と BroadcastChannel
 
-RxJava�ɂ́A���ׂẴT�u�X�N���C�o�[�ɗv�f�����ʓI�Ƀu���[�h�L���X�g����I�u�W�F�N�g�ł���[Subject](https://github.com/ReactiveX/RxJava/wiki/Subject)�Ƃ����T�O������܂��B
-�R���[�`���̐��E�ň�v����T�O��[BroadcastChannel]�ƌĂ΂�܂��B
-Rx�ɂ́A[BehaviorSubject](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/subjects/BehaviorSubject.html)����Ԃ��Ǘ����邽�߂Ɏg�p�������̂ł���悤�ɁA�l�X�ȃT�u�W�F�N�g������܂��B
+RxJavaには、すべてのサブスクライバーに要素を効果的にブロードキャストするオブジェクトである[Subject](https://github.com/ReactiveX/RxJava/wiki/Subject)という概念があります。
+コルーチンの世界で一致する概念は[BroadcastChannel]と呼ばれます。
+Rxには、[BehaviorSubject](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/subjects/BehaviorSubject.html)が状態を管理するために使用されるものであるように、様々なサブジェクトがあります。
 
 <!--- INCLUDE
 import io.reactivex.subjects.BehaviorSubject
@@ -357,17 +357,17 @@ import io.reactivex.subjects.BehaviorSubject
 fun main(args: Array<String>) {
     val subject = BehaviorSubject.create<String>()
     subject.onNext("one")
-    subject.onNext("two") // BehaviorSubject�̏�Ԃ��X�V���A"1"�̒l��������
-    // �����ł��̃T�u�W�F�N�g���w�ǂ��Ă��ׂĂ��v�����g����
+    subject.onNext("two") // BehaviorSubjectの状態を更新し、"1"の値が失われる
+    // ここでこのサブジェクトを購読してすべてをプリントする
     subject.subscribe(System.out::println)
     subject.onNext("three")
     subject.onNext("four")
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-06.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-06.kt)で完全なコードを取得できます
 
-���̃R�[�h�́A�T�u�X�N���v�V�����Ƃ��̂��ׂĂ̍X�Ȃ�A�b�v�f�[�g�ŃT�u�W�F�N�g�̌��݂̏�Ԃ��v�����g���܂��B
+このコードは、サブスクリプションとそのすべての更なるアップデートでサブジェクトの現在の状態をプリントします。
 
 ```text
 two
@@ -377,7 +377,7 @@ four
 
 <!--- TEST -->
 
-���̃��A�N�e�B�u�X�g���[���Ɠ��l�ɁA�R���[�`������T�u�W�F�N�g���w�ǂ��邱�Ƃ��ł��܂��B
+他のリアクティブストリームと同様に、コルーチンからサブジェクトを購読することができます。
    
 <!--- INCLUDE 
 import io.reactivex.subjects.BehaviorSubject
@@ -392,8 +392,8 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     val subject = BehaviorSubject.create<String>()
     subject.onNext("one")
     subject.onNext("two")
-    // ���ׂĂ��������R���[�`�����N������
-    launch(Unconfined) { // �����̂Ȃ��R���e�L�X�g�ŃR���[�`�����N������
+    // すべてを印刷するコルーチンを起動する
+    launch(Unconfined) { // 制限のないコンテキストでコルーチンを起動する
         subject.consumeEach { println(it) }
     }
     subject.onNext("three")
@@ -401,9 +401,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```   
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-07.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-07.kt)で完全なコードを取得できます
 
-���ʂ͓����ł��B
+結果は同じです。
 
 ```text
 two
@@ -413,14 +413,14 @@ four
 
 <!--- TEST -->
 
-�����ł́A[Unconfined]�R���[�`���R���e�L�X�g���g�p���āARx�̃T�u�X�N���v�V�����Ɠ���������������R���[�`�����N�����܂��B
-��{�I�ɂ́A�N�������R���[�`���͗v�f���o�͂����̂Ɠ����X���b�h�Œ����Ɏ��s����邱�Ƃ��Ӗ����܂��B
-�R���e�L�X�g�̏ڍׂɂ��ẮA[�ʂ̃Z�N�V����](#�R���[�`���R���e�L�X�g)���Q�Ƃ��Ă��������B
+ここでは、[Unconfined]コルーチンコンテキストを使用して、Rxのサブスクリプションと同じ動作をする消費コルーチンを起動します。
+基本的には、起動したコルーチンは要素が出力されるのと同じスレッドで直ちに実行されることを意味します。
+コンテキストの詳細については、[別のセクション](#コルーチンコンテキスト)を参照してください。
 
-�R���[�`���̗��_�́A�V���O���X���b�h��UI�X�V�̏W�񓮍���ȒP�ɓ����邱�Ƃł��B
-�T�^�I��UI�A�v���P�[�V�����́A���ׂĂ̏�ԕύX�ɔ�������K�v�͂���܂���B�ŐV�̏�Ԃ݂̂��֌W���܂��B
-UI�X���b�h����������Ƃ����ɁA�A�v���P�[�V�����̏�Ԃɑ΂����A�̘A�������X�V��1�x����UI�ɔ��f������K�v������܂��B
-���̗�ł́A���C���X���b�h�̃R���e�L�X�g�ŏ���R���[�`�����N�����A[yield]�֐����g�p���Ĉ�A�̍X�V�̒��f���V�~�����[�g�����C���X���b�h��������邱�ƂŁA������V�~�����[�g���܂��B
+コルーチンの利点は、シングルスレッドのUI更新の集約動作を簡単に得られることです。
+典型的なUIアプリケーションは、すべての状態変更に反応する必要はありません。最新の状態のみが関係します。
+UIスレッドが解放されるとすぐに、アプリケーションの状態に対する一連の連続した更新を1度だけUIに反映させる必要があります。
+次の例では、メインスレッドのコンテキストで消費コルーチンを起動し、[yield]関数を使用して一連の更新の中断をシミュレートしメインスレッドを解放することで、これをシミュレートします。
 
 <!--- INCLUDE
 import io.reactivex.subjects.BehaviorSubject
@@ -435,19 +435,19 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     val subject = BehaviorSubject.create<String>()
     subject.onNext("one")
     subject.onNext("two")
-    // �ŐV�̍X�V���v�����g����R���[�`�����N��
-    launch(context) { // �R���[�`���̃��C���X���b�h�̃R���e�L�X�g���g�p����
+    // 最新の更新をプリントするコルーチンを起動
+    launch(context) { // コルーチンのメインスレッドのコンテキストを使用する
         subject.consumeEach { println(it) }
     }
     subject.onNext("three")
     subject.onNext("four")
-    yield() // �N�������R���[�`���փ��C���X���b�h������ <--- ����
+    yield() // 起動したコルーチンへメインスレッドを譲る <--- ここ
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-08.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-08.kt)で完全なコードを取得できます
 
-�R���[�`���͍ŐV�̃A�b�v�f�[�g�݂̂������i�v�����g�j���܂��B
+コルーチンは最新のアップデートのみを処理（プリント）します。
 
 ```text
 four
@@ -455,7 +455,7 @@ four
 
 <!--- TEST -->
 
-�����ȃR���[�`���̐��E�ł���ɑ������鋓���́A[ConflatedBroadcastChannel]�ɂ���Ď�������Ă��܂��B����̓u���b�W���o�R���ă��A�N�e�B�u�X�g���[���ɍs�����ƂȂ��A�R���[�`���`���l���̏�ɓ������W�b�N�𒼐ڒ񋟂��܂��B
+純粋なコルーチンの世界でこれに相当する挙動は、[ConflatedBroadcastChannel]によって実装されています。これはブリッジを経由してリアクティブストリームに行くことなく、コルーチンチャネルの上に同じロジックを直接提供します。
 
 <!--- INCLUDE
 import kotlinx.coroutines.experimental.channels.ConflatedBroadcastChannel
@@ -470,19 +470,19 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     val broadcast = ConflatedBroadcastChannel<String>()
     broadcast.offer("one")
     broadcast.offer("two")
-    // �ŐV�̍X�V���v�����g����R���[�`�����N��
-    launch(context) { // �R���[�`���̃��C���X���b�h�̃R���e�L�X�g���g�p����
+    // 最新の更新をプリントするコルーチンを起動
+    launch(context) { // コルーチンのメインスレッドのコンテキストを使用する
         broadcast.consumeEach { println(it) }
     }
     broadcast.offer("three")
     broadcast.offer("four")
-    yield() // �N�������R���[�`���փ��C���X���b�h������
+    yield() // 起動したコルーチンへメインスレッドを譲る
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-09.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-09.kt)で完全なコードを取得できます
 
-`BehaviorSubject` �Ɋ�Â��O�̗�Ɠ����o�͂𐶐����܂��B
+`BehaviorSubject` に基づく前の例と同じ出力を生成します。
 
 ```text
 four
@@ -490,26 +490,26 @@ four
 
 <!--- TEST -->
 
-[BroadcastChannel]�̕ʂ̎�����[ArrayBroadcastChannel]�ł��B
-�Ή�����T�u�X�N���v�V�������J����Ă���e�T�u�X�N���C�o�ɂ��ׂẴC�x���g��z�M���܂��B
-Rx��[PublishSubject](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/subjects/PublishSubject.html)�ɑ������܂��B
-`ArrayBroadcastChannel` �̃R���X�g���N�^���̃o�b�t�@�̗e�ʂ́A��M�����v�f���󂯎��̂𑗐M�����҂����ɑ��M�ł���v�f�̐��𐧌䂵�܂��B
+[BroadcastChannel]の別の実装は[ArrayBroadcastChannel]です。
+対応するサブスクリプションが開かれてから各サブスクライバにすべてのイベントを配信します。
+Rxの[PublishSubject](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/subjects/PublishSubject.html)に相当します。
+`ArrayBroadcastChannel` のコンストラクタ内のバッファの容量は、受信側が要素を受け取るのを送信側が待たずに送信できる要素の数を制御します。
 
-## ���Z�q
+## 演算子
 
-Rx�̂悤�ȃt���@�\�̃��A�N�e�B�u�X�g���[�����C�u�����ɂ́A�X�g���[�����쐬�A�ϊ��A�����A����т��̑��̕��@�ŏ������邽�߂�[���ɑ����̉��Z�q](http://reactivex.io/documentation/operators.html)���t�����Ă��܂��B �o�b�N�v���b�V���[���T�|�[�g����Ǝ��̉��Z�q���쐬���邱�Ƃ�[���](https://github.com/ReactiveX/RxJava/wiki/Writing-operators-for-2.0)���Ƃ�[�L��](http://akarnokd.blogspot.ru/2015/05/pitfalls-of-operator-implementations.html)�ł��B
+Rxのようなフル機能のリアクティブストリームライブラリには、ストリームを作成、変換、結合、およびその他の方法で処理するための[非常に多くの演算子](http://reactivex.io/documentation/operators.html)が付属しています。 バックプレッシャーをサポートする独自の演算子を作成することは[難しい](https://github.com/ReactiveX/RxJava/wiki/Writing-operators-for-2.0)ことで[有名](http://akarnokd.blogspot.ru/2015/05/pitfalls-of-operator-implementations.html)です。
 
-�R���[�`���ƃ`�����l���͋t�̌o����񋟂���悤�ɐ݌v����Ă��܂��B
-�g�ݍ��݂̉��Z�q�͂���܂��񂪁A�G�������g�̃X�g���[������������͔̂��ɊȒP�ŁA�o�b�N�v���b�V���[�͖����I�ɍl����K�v�Ȃ������I�ɃT�|�[�g����܂��B
+コルーチンとチャンネルは逆の経験を提供するように設計されています。
+組み込みの演算子はありませんが、エレメントのストリームを処理するのは非常に簡単で、バックプレッシャーは明示的に考える必要なく自動的にサポートされます。
 
-���̃Z�N�V�����ł́A�������̃��A�N�e�B�u�X�g���[�����Z�q�̃R���[�`���x�[�X�̎����������܂��B
+このセクションでは、いくつかのリアクティブストリーム演算子のコルーチンベースの実装を示します。
 
 ### Range
 
-���A�N�e�B�u�X�g���[���� `Publisher` �C���^�[�t�F�C�X�̂��߂ɁA[range](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#range(int,%20int))���Z�q�̓Ǝ��̎�����W�J���܂��傤�B
-���A�N�e�B�u�X�g���[���p�̂��̉��Z�q�̔񓯊��̂��ꂢ�Ȏ����ɂ��ẮA[���̃u���O�L��](http://akarnokd.blogspot.ru/2017/03/java-9-flow-api-asynchronous-integer.html)�Ő������Ă��܂��B
-����͑����̃R�[�h��K�v�Ƃ��܂��B
-�R���[�`�����g�����R�[�h���ȉ��Ɏ����܂��B
+リアクティブストリームの `Publisher` インターフェイスのために、[range](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#range(int,%20int))演算子の独自の実装を展開しましょう。
+リアクティブストリーム用のこの演算子の非同期のきれいな実装については、[このブログ記事](http://akarnokd.blogspot.ru/2017/03/java-9-flow-api-asynchronous-integer.html)で説明しています。
+それは多くのコードを必要とします。
+コルーチンを使ったコードを以下に示します。
 
 <!--- INCLUDE
 import kotlinx.coroutines.experimental.*
@@ -523,10 +523,10 @@ fun range(context: CoroutineContext, start: Int, count: Int) = publish<Int>(cont
 }
 ```
 
-���̃R�[�h�ł́A `Executor` �̑���� `CoroutineContext` ���g�p����Ă��܂��B�܂��A�o�b�N�v���b�V���[�̂��ׂĂ̑��ʂ̓R���[�`���̎d�g�݂ň����܂��B
-���̎����́A `Publisher` �C���^�[�t�F�C�X�Ƃ��̒��Ԃ��`���鏬���ȃ��A�N�e�B�u�X�g���[�����C�u�����݂̂Ɉˑ����Ă��邱�Ƃɒ��ӂ��Ă��������B
+このコードでは、 `Executor` の代わりに `CoroutineContext` が使用されています。また、バックプレッシャーのすべての側面はコルーチンの仕組みで扱われます。
+この実装は、 `Publisher` インターフェイスとその仲間を定義する小さなリアクティブストリームライブラリのみに依存していることに注意してください。
 
-�R���[�`������g�p����̂͊ȒP�ł��B
+コルーチンから使用するのは簡単です。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -534,9 +534,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-operators-01.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-operators-01.kt)で完全なコードを取得できます
 
-���̃R�[�h�̌��ʂ͋ɂ߂ē��R�ł��B
+このコードの結果は極めて当然です。
    
 ```text
 1
@@ -548,10 +548,10 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 <!--- TEST -->
 
-### filter��map�̗Z��
+### filterとmapの融合
 
-[filter](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#filter(io.reactivex.functions.Predicate))��[map](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#map(io.reactivex.functions.Function))�̂悤�ȃ��A�N�e�B�u���Z�q�́A�R���[�`���Ŏ�������̂͊ȒP�ł��B
-������Ƃ����`�������W�ƃV���[�P�[�X�̂��߂ɁA������P��� `fusedFilterMap` ���Z�q�ɑg�ݍ��킹�܂��傤�B
+[filter](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#filter(io.reactivex.functions.Predicate))や[map](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#map(io.reactivex.functions.Function))のようなリアクティブ演算子は、コルーチンで実装するのは簡単です。
+ちょっとしたチャレンジとショーケースのために、それらを単一の `fusedFilterMap` 演算子に組み合わせましょう。
 
 <!--- INCLUDE
 import kotlinx.coroutines.experimental.*
@@ -562,18 +562,18 @@ import kotlin.coroutines.experimental.CoroutineContext
 
 ```kotlin
 fun <T, R> Publisher<T>.fusedFilterMap(
-    context: CoroutineContext,   // ���̃R���[�`�������s���邽�߂̃R���e�L�X�g
-    predicate: (T) -> Boolean,   // �t�B���^�[�q��
-    mapper: (T) -> R             // mapper�֐�
+    context: CoroutineContext,   // このコルーチンを実行するためのコンテキスト
+    predicate: (T) -> Boolean,   // フィルター述語
+    mapper: (T) -> R             // mapper関数
 ) = publish<R>(context) {
-    consumeEach {                // �\�[�X�X�g���[���������
-        if (predicate(it))       // �t�B���^�[��
-            send(mapper(it))     // �}�b�v��
+    consumeEach {                // ソースストリームを消費する
+        if (predicate(it))       // フィルター部
+            send(mapper(it))     // マップ部
     }        
 }
 ```
 
-�O�̗�� `range` ���g���ƁA�����Ƀt�B���^�����O���ĕ�����Ƀ}�b�s���O���� `fusedFilterMap` �̃e�X�g���ł��܂��B
+前の例の `range` を使うと、偶数にフィルタリングして文字列にマッピングする `fusedFilterMap` のテストができます。
 
 <!--- INCLUDE
 
@@ -586,13 +586,13 @@ fun range(context: CoroutineContext, start: Int, count: Int) = publish<Int>(cont
 fun main(args: Array<String>) = runBlocking<Unit> {
    range(context, 1, 5)
        .fusedFilterMap(context, { it % 2 == 0}, { "$it is even" })
-       .consumeEach { println(it) } // ���ʂ̕���������ׂăv�����g����
+       .consumeEach { println(it) } // 結果の文字列をすべてプリントする
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-operators-02.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-operators-02.kt)で完全なコードを取得できます
 
-���ʂ��m�F����͓̂���Ȃ��A���̂悤�ɂȂ�ł��傤�B
+結果を確認するのは難しくなく、次のようになるでしょう。
 
 ```text
 2 is even
@@ -603,10 +603,10 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 ### Take until
 
-�Ǝ��̃o�[�W������[takeUntil](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#takeUntil(org.reactivestreams.Publisher))���Z�q���������܂��傤�B
-2�̃X�g���[���ւ̃T�u�X�N���v�V������ǐՂ��ĊǗ�����K�v�����邽�߁A��������͔̂���[���](http://akarnokd.blogspot.ru/2015/05/pitfalls-of-operator-implementations.html)���̂ł��B
-���̃X�g���[�����������邩�����𑗏o����܂ŁA�\�[�X�X�g���[�����炷�ׂĂ̗v�f�������[����K�v������܂��B
-�������A�R���[�`���̎�����������[select]��������܂��B
+独自のバージョンの[takeUntil](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#takeUntil(org.reactivestreams.Publisher))演算子を実装しましょう。
+2つのストリームへのサブスクリプションを追跡して管理する必要があるため、実装するのは非常に[難しい](http://akarnokd.blogspot.ru/2015/05/pitfalls-of-operator-implementations.html)ものです。
+他のストリームが完了するか何かを送出するまで、ソースストリームからすべての要素をリレーする必要があります。
+しかし、コルーチンの実装を助ける[select]式があります。
 
 <!--- INCLUDE
 import kotlinx.coroutines.experimental.*
@@ -618,44 +618,44 @@ import kotlinx.coroutines.experimental.selects.whileSelect
 
 ```kotlin
 fun <T, U> Publisher<T>.takeUntil(context: CoroutineContext, other: Publisher<U>) = publish<T>(context) {
-    this@takeUntil.open().use { thisChannel ->           // Publisher<T>�̃`���l���𖾎��I�ɊJ��
-        other.open().use { otherChannel ->               // Publisher<U>�̃`���l���𖾎��I�ɊJ��
+    this@takeUntil.open().use { thisChannel ->           // Publisher<T>のチャネルを明示的に開く
+        other.open().use { otherChannel ->               // Publisher<U>のチャネルを明示的に開く
             whileSelect {
-                otherChannel.onReceive { false }         // `other` ���牽���v�f���󂯎������E�o����
-                thisChannel.onReceive { send(it); true } // thisChannel�̗v�f���đ����đ��s����
+                otherChannel.onReceive { false }         // `other` から何か要素を受け取ったら脱出する
+                thisChannel.onReceive { send(it); true } // thisChannelの要素を再送して続行する
             }
         }
     }
 }
 ```
 
-���̃R�[�h�́A `while(select{...}) {}` ���[�v�̂��ǂ��V���[�g�J�b�g�Ƃ���[whileSelect]���g�p���AKotlin��[use]���ɂ���ďI�����Ƀ`���l������A�Ή�����p�u���b�V���[�̍w�ǂ��������܂��B
+このコードは、 `while(select{...}) {}` ループのより良いショートカットとして[whileSelect]を使用し、Kotlinの[use]式によって終了時にチャネルを閉じ、対応するパブリッシャーの購読を解除します。
 
-�ȉ��̌��ߑł���[range](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#range(int,%20int))��[interval](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#interval(long,%20java.util.concurrent.TimeUnit,%20io.reactivex.Scheduler))�̑g�ݍ��킹���e�X�g�Ɏg�p����܂��B
-`publish` �R���[�`���r���_�[���g�p���ăR�[�h������Ă��܂��i������Rx�̎����͌�̃Z�N�V�����Ő������Ă��܂��j�B
+以下の決め打ちの[range](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#range(int,%20int))と[interval](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#interval(long,%20java.util.concurrent.TimeUnit,%20io.reactivex.Scheduler))の組み合わせがテストに使用されます。
+`publish` コルーチンビルダーを使用してコード化されています（純粋なRxの実装は後のセクションで説明しています）。
 
 ```kotlin
 fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: Int) = publish<Int>(context) {
     for (x in start until start + count) { 
-        delay(time) // �e���l�𑗂�O�ɑ҂�
+        delay(time) // 各数値を送る前に待つ
         send(x)
     }
 }
 ```
 
-���̃R�[�h�� `takeUntil` �̓����������Ă��܂��B
+次のコードは `takeUntil` の働きを示しています。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val slowNums = rangeWithInterval(context, 200, 1, 10)         // 200�~���b�Ԋu�̐���
-    val stop = rangeWithInterval(context, 500, 1, 10)             // �ŏ��̂��̂�500�~���b��
-    slowNums.takeUntil(context, stop).consumeEach { println(it) } // �e�X�g���Ă݂�
+    val slowNums = rangeWithInterval(context, 200, 1, 10)         // 200ミリ秒間隔の数列
+    val stop = rangeWithInterval(context, 500, 1, 10)             // 最初のものは500ミリ秒後
+    slowNums.takeUntil(context, stop).consumeEach { println(it) } // テストしてみる
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-operators-03.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-operators-03.kt)で完全なコードを取得できます
 
-�o�͂́A
+出力は、
 
 ```text
 1
@@ -666,9 +666,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 ### Merge
 
-�R���[�`���ŕ����̃f�[�^�X�g���[������������ɂ́A��ɏ��Ȃ��Ƃ�2�̕��@������܂��B
-�O�̗�ł́A[select]�𔺂�1�̕��@��������Ă��܂����B
-����1�̕��@�́A�����̃R���[�`�����N�����邱�Ƃł��B ��҂̎�@���g����[merge](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#merge(org.reactivestreams.Publisher))���Z�q���������܂��傤�B
+コルーチンで複数のデータストリームを処理するには、常に少なくとも2つの方法があります。
+前の例では、[select]を伴う1つの方法が示されていました。
+もう1つの方法は、複数のコルーチンを起動することです。 後者の手法を使って[merge](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#merge(org.reactivestreams.Publisher))演算子を実装しましょう。
 
 <!--- INCLUDE
 import kotlinx.coroutines.experimental.*
@@ -679,25 +679,25 @@ import kotlin.coroutines.experimental.CoroutineContext
 
 ```kotlin
 fun <T> Publisher<Publisher<T>>.merge(context: CoroutineContext) = publish<T>(context) {
-  consumeEach { pub ->                 // �\�[�X�`�����l�������M�����e�p�u���b�V���[
-      launch(this.context) {           // �q�R���[�`�����N��
-          pub.consumeEach { send(it) } // ���̃p�u���b�V���[���炷�ׂĂ̗v�f���đ�����
+  consumeEach { pub ->                 // ソースチャンネルから受信した各パブリッシャー
+      launch(this.context) {           // 子コルーチンを起動
+          pub.consumeEach { send(it) } // このパブリッシャーからすべての要素を再送する
       }
   }
 }
 ```
 
-��: [launch]�R���[�`���r���_�[�̌Ăяo���� `this.context` ���g�p���܂��B [publish]�r���_�[�ɂ���Ē񋟂����[CoroutineScope.context]���Q�Ƃ��邽�߂Ɏg�p����܂��B
-���̂悤�ɂ��āA�����ŊJ�n���ꂽ�R���[�`���� `publish` �R���[�`����[children](../coroutines-guide.md#children-of-a-coroutine)�ł���A`publish` �R���[�`�����L�����Z�����ꂽ�ꍇ�⊮�������ꍇ�ɃL�����Z������܂��B
-���̎����́A���̃p�u���b�V���[����������Ƃ����Ɋ������܂��B
+注: [launch]コルーチンビルダーの呼び出しで `this.context` を使用します。 [publish]ビルダーによって提供される[CoroutineScope.context]を参照するために使用されます。
+このようにして、ここで開始されたコルーチンは `publish` コルーチンの[children](../coroutines-guide.md#children-of-a-coroutine)であり、`publish` コルーチンがキャンセルされた場合や完了した場合にキャンセルされます。
+この実装は、元のパブリッシャーが完了するとすぐに完了します。
 
-�e�X�g�̂��߂ɁA�O�̗�� `rangeWithInterval` �֐��ƁA�����炩�x��Ă��̌��ʂ�2�񑗂�v���f���[�T�[���������Ƃ���n�߂܂��傤�B
+テストのために、前の例の `rangeWithInterval` 関数と、いくらか遅れてその結果を2回送るプロデューサーを書くことから始めましょう。
 
 <!--- INCLUDE
 
 fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: Int) = publish<Int>(context) {
     for (x in start until start + count) { 
-        delay(time) // �e���l�𑗐M����O�ɑ҂�
+        delay(time) // 各数値を送信する前に待つ
         send(x)
     }
 }
@@ -705,24 +705,24 @@ fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: 
 
 ```kotlin
 fun testPub(context: CoroutineContext) = publish<Publisher<Int>>(context) {
-    send(rangeWithInterval(context, 250, 1, 4)) // ���l 1 �� 250ms, 2 �� 500ms, 3 �� 750ms, 4 �� 1000ms 
-    delay(100) // 100ms�҂�
-    send(rangeWithInterval(context, 500, 11, 3)) // ���l 11 �� 600ms, 12 �� 1100ms, 13 �� 1600ms
-    delay(1100) // 1.1�b�҂� - �J�n����1.2�b��Ɋ���
+    send(rangeWithInterval(context, 250, 1, 4)) // 数値 1 は 250ms, 2 は 500ms, 3 は 750ms, 4 は 1000ms 
+    delay(100) // 100ms待つ
+    send(rangeWithInterval(context, 500, 11, 3)) // 数値 11 は 600ms, 12 は 1100ms, 13 は 1600ms
+    delay(1100) // 1.1秒待つ - 開始から1.2秒後に完了
 }
 ```
 
-���̃e�X�g�R�[�h�́A `testPub` �� `merge` ���g���A���ʂ�\�����܂��B
+次のテストコードは、 `testPub` に `merge` を使い、結果を表示します。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    testPub(context).merge(context).consumeEach { println(it) } // �X�g���[���S�̂��v�����g����
+    testPub(context).merge(context).consumeEach { println(it) } // ストリーム全体をプリントする
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-operators-04.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-operators-04.kt)で完全なコードを取得できます
 
-���ʂ͎��̂悤�ɂȂ�܂��B
+結果は次のようになります。
 
 ```text
 1
@@ -735,15 +735,15 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 <!--- TEST -->
 
-## �R���[�`���R���e�L�X�g
+## コルーチンコンテキスト
 
-�O�̃Z�N�V�����Ŏ��������ׂẲ��Z�q�̗�ɂ͖����I��[CoroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines.experimental/-coroutine-context/)�p�����[�^������܂��B
-Rx�̐��E�ł́A����͂����悻[Scheduler](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Scheduler.html)�ɑ������܂��B
+前のセクションで示したすべての演算子の例には明示的な[CoroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines.experimental/-coroutine-context/)パラメータがあります。
+Rxの世界では、それはおおよそ[Scheduler](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Scheduler.html)に相当します。
 
-### Rx�̃X���b�h
+### Rxのスレッド
 
-���̗�́ARx�ł̃X���b�h�R���e�L�X�g�Ǘ��̊�{�������Ă��܂��B
-������ `rangeWithIntervalRx` ��Rx `zip`�A `range` �A `interval` ���Z�q���g���� `rangeWithInterval` �֐��̎����ł��B
+次の例は、Rxでのスレッドコンテキスト管理の基本を示しています。
+ここで `rangeWithIntervalRx` はRx `zip`、 `range` 、 `interval` 演算子を使った `rangeWithInterval` 関数の実装です。
 
 <!--- INCLUDE
 import io.reactivex.*
@@ -766,10 +766,10 @@ fun main(args: Array<String>) {
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-01.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-01.kt)で完全なコードを取得できます
 
-`rangeWithIntervalRx` ���Z�q�ɖ����I��[Schedulers.computation()](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/schedulers/Schedulers.html#computation())�X�P�W���[���[��n���Ă��܂��B�����Rx�v�Z�X���b�h�v�[���Ŏ��s����܂��B
-�o�͎͂��̂悤�ɂȂ�܂��B
+`rangeWithIntervalRx` 演算子に明示的に[Schedulers.computation()](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/schedulers/Schedulers.html#computation())スケジューラーを渡しています。これはRx計算スレッドプールで実行されます。
+出力は次のようになります。
 
 ```text
 1 on thread RxComputationThreadPool-1
@@ -779,9 +779,9 @@ fun main(args: Array<String>) {
 
 <!--- TEST FLEXIBLE_THREAD -->
 
-### �R���[�`���̃X���b�h
+### コルーチンのスレッド
 
-�R���[�`���̐��E�ł́A `Schedulers.computation()` ��[CommonPool]�ɂقڑΉ����Ă���̂ŁA�O�̗�͎��̗�Ɏ��Ă��܂��B
+コルーチンの世界では、 `Schedulers.computation()` は[CommonPool]にほぼ対応しているので、前の例は次の例に似ています。
 
 <!--- INCLUDE
 import io.reactivex.*
@@ -793,7 +793,7 @@ import kotlin.coroutines.experimental.CoroutineContext
 ```kotlin
 fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: Int) = publish<Int>(context) {
     for (x in start until start + count) { 
-        delay(time) // �e���l�𑗐M����O�ɑ҂�
+        delay(time) // 各数値を送信する前に待つ
         send(x)
     }
 }
@@ -805,9 +805,9 @@ fun main(args: Array<String>) {
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-02.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-02.kt)で完全なコードを取得できます
 
-���������o�͎͂��̂悤�ɂȂ�܂��B
+生成される出力は次のようになります。
 
 ```text
 1 on thread ForkJoinPool.commonPool-worker-1
@@ -817,15 +817,15 @@ fun main(args: Array<String>) {
 
 <!--- TEST LINES_START -->
 
-�����ł́A�Ǝ��̃X�P�W���[���[���������A�p�u���b�V���[�Ɠ����X���b�h�œ��삷��Rx [subscribe](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#subscribe(io.reactivex.functions.Consumer))���Z�q���g�p���܂����B���̗�ł� `CommonPool` ���g�p���Ă��܂��B
+ここでは、独自のスケジューラーを持たず、パブリッシャーと同じスレッドで動作するRx [subscribe](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#subscribe(io.reactivex.functions.Consumer))演算子を使用しました。この例では `CommonPool` を使用しています。
 
 ### Rx observeOn
 
-Rx�ł͓��ʂȉ��Z�q���g�p���ă`�F�[�����̑���̃X���b�h�R���e�L�X�g��ύX���܂��B
-�܂�����Ă��Ȃ��ꍇ�A�����ɂ��Ă�[�ǂ��K�C�h](http://tomstechnicalblog.blogspot.ru/2016/02/rxjava-understanding-observeon-and.html)�������邱�Ƃ��ł��܂��B
+Rxでは特別な演算子を使用してチェーン内の操作のスレッドコンテキストを変更します。
+まだ慣れていない場合、それらについての[良いガイド](http://tomstechnicalblog.blogspot.ru/2016/02/rxjava-understanding-observeon-and.html)を見つけることができます。
 
-���Ƃ��΁A[observeOn](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#observeOn(io.reactivex.Scheduler))���Z�q������܂��B
-`Schedulers.computation()` ���g���ăI�u�U�[�u���邽�߂ɑO�̗���C�����܂��傤�B
+たとえば、[observeOn](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#observeOn(io.reactivex.Scheduler))演算子があります。
+`Schedulers.computation()` を使ってオブザーブするために前の例を修正しましょう。
 
 <!--- INCLUDE
 import io.reactivex.*
@@ -838,22 +838,22 @@ import kotlin.coroutines.experimental.CoroutineContext
 ```kotlin
 fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: Int) = publish<Int>(context) {
     for (x in start until start + count) { 
-        delay(time) // �e���l�𑗐M����O�ɑ҂�
+        delay(time) // 各数値を送信する前に待つ
         send(x)
     }
 }
 
 fun main(args: Array<String>) {
     Flowable.fromPublisher(rangeWithInterval(CommonPool, 100, 1, 3))
-        .observeOn(Schedulers.computation())                           // <-- ���̍s���ǉ����ꂽ
+        .observeOn(Schedulers.computation())                           // <-- この行が追加された
         .subscribe { println("$it on thread ${Thread.currentThread().name}") }
     Thread.sleep(1000)
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-03.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-03.kt)で完全なコードを取得できます
 
-�o�͂̈Ⴂ�͎��̂Ƃ���ł��B"RxComputationThreadPool" �ɒ��ڂ��Ă��������B
+出力の違いは次のとおりです。"RxComputationThreadPool" に注目してください。
 
 ```text
 1 on thread RxComputationThreadPool-1
@@ -863,9 +863,9 @@ fun main(args: Array<String>) {
 
 <!--- TEST FLEXIBLE_THREAD -->
 
-### ���ׂĂ𐧌䂷��R���[�`���R���e�L�X�g
+### すべてを制御するコルーチンコンテキスト
 
-�R���[�`���́A��ɉ��炩�̃R���e�L�X�g�œ��삵�Ă��܂��B ���Ƃ��΁A[runBlocking]���g�p���ă��C���X���b�h�ŃR���[�`�����J�n���ARx�o�[�W������ `rangeWithIntervalRx` ���Z�q�̌��ʂ�Rx `subscribe` ���Z�q���g�p����̂ł͂Ȃ������������܂��傤�B
+コルーチンは、常に何らかのコンテキストで動作しています。 たとえば、[runBlocking]を使用してメインスレッドでコルーチンを開始し、Rxバージョンの `rangeWithIntervalRx` 演算子の結果をRx `subscribe` 演算子を使用するのではなく反復処理しましょう。
 
 <!--- INCLUDE
 import io.reactivex.*
@@ -889,9 +889,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-04.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-04.kt)で完全なコードを取得できます
 
-���ʂƂ��ē����郁�b�Z�[�W�̓��C���X���b�h�Ńv�����g����܂��B
+結果として得られるメッセージはメインスレッドでプリントされます。
 
 ```text
 1 on thread main
@@ -901,13 +901,13 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 <!--- TEST LINES_START -->
 
-### Unconfined�R���e�L�X�g
+### Unconfinedコンテキスト
 
-�قƂ�ǂ�Rx���Z�q�͓���̃X���b�h�i�X�P�W���[���[�j�Ɋ֘A�t�����Ă��炸�A�Ăяo���ꂽ�X���b�h�œ��삵�܂��B
-[Rx�̃X���b�h](#Rx�̃X���b�h)�Z�N�V������ `subscribe` ���Z�q�̗�Ō��Ă��܂����B
+ほとんどのRx演算子は特定のスレッド（スケジューラー）に関連付けられておらず、呼び出されたスレッドで動作します。
+[Rxのスレッド](#Rxのスレッド)セクションの `subscribe` 演算子の例で見てきました。
 
-�R���[�`���̐��E�ł́A[Unconfined]�R���e�L�X�g�����l�̖������ʂ����܂��B
-�O�̗��ύX���Ă݂܂��傤�B���C���X���b�h�Ɍ��肳�ꂽ `runBlocking` �R���[�`������\�[�X `Flowable` �𔽕�����̂ł͂Ȃ��A `Unconfined` �R���e�L�X�g�ŐV�����R���[�`�����N�����܂��B���C���R���[�`����[Job.join]���g�p���Ă���������҂����ł��B
+コルーチンの世界では、[Unconfined]コンテキストも同様の役割を果たします。
+前の例を変更してみましょう。メインスレッドに限定された `runBlocking` コルーチンからソース `Flowable` を反復するのではなく、 `Unconfined` コンテキストで新しいコルーチンを起動します。メインコルーチンは[Job.join]を使用してただ完了を待つだけです。
 
 
 <!--- INCLUDE
@@ -927,17 +927,17 @@ fun rangeWithIntervalRx(scheduler: Scheduler, time: Long, start: Int, count: Int
         BiFunction { x, _ -> x })
 
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val job = launch(Unconfined) { // Unconfined�R���e�L�X�g�ŐV�����R���[�`�����N������i�Ǝ��̃X���b�h�v�[���Ȃ��j
+    val job = launch(Unconfined) { // Unconfinedコンテキストで新しいコルーチンを起動する（独自のスレッドプールなし）
         rangeWithIntervalRx(Schedulers.computation(), 100, 1, 3)
             .consumeEach { println("$it on thread ${Thread.currentThread().name}") }
     }
-    job.join() // �R���[�`������������̂�҂�
+    job.join() // コルーチンが完了するのを待つ
 }
 ```
 
-> [����](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-05.kt)�Ŋ��S�ȃR�[�h���擾�ł��܂�
+> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-05.kt)で完全なコードを取得できます
 
-�����ŏo�͂́ARx `subscribe` ���Z�q���g�p���������̗�̂悤�ɁA�R���[�`���̃R�[�h��Rx�v�Z�X���b�h�v�[���Ŏ��s����Ă��邱�Ƃ������Ă��܂��B
+ここで出力は、Rx `subscribe` 演算子を使用した初期の例のように、コルーチンのコードがRx計算スレッドプールで実行されていることを示しています。
 
 ```text
 1 on thread RxComputationThreadPool-1
@@ -947,15 +947,15 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 <!--- TEST LINES_START -->
 
-[Unconfined]�R���e�L�X�g�͒��ӂ��Ďg�p����ׂ��ł��B
-����̃X�^�b�N���[�J���e�B���̌���ƃX�P�W���[�����O�̃I�[�o�[�w�b�h�̂��߂ɁA����̃e�X�g�̑S�̓I�ȃp�t�H�[�}���X�����シ��ꍇ������܂����A�X�^�b�N���[���Ȃ�A�g�p���Ă���R�[�h�̔񓯊����𐄑�����̂�����Ȃ�܂��B
+[Unconfined]コンテキストは注意して使用するべきです。
+操作のスタックローカリティ性の向上とスケジューリングのオーバーヘッドのために、特定のテストの全体的なパフォーマンスが向上する場合がありますが、スタックが深くなり、使用しているコードの非同期性を推測するのが難しくなります。
 
-�R���[�`�����`���l���ɗv�f�𑗂�ƁA[send][SendChannel.send]���Ăяo�����X���b�h��[Unconfined]�f�B�X�p�b�`���[�ŃR���[�`���̃R�[�h�̎��s���J�n���邱�Ƃ�����܂��B
-`send` ���Ăяo�����̃v���f���[�T�[�R���[�`���́Aunconfined�̃R���V���[�}�[�R���[�`�������̒��f�|�C���g�ɒB����܂ňꎞ��~����܂��B
-����́A�X���b�h�V�t�g���Z�q���Ȃ��ꍇ��Rx���E�ł̃��b�N�X�e�b�v�̃V���O���X���b�h�� `onNext` �̎��s�Ɣ��ɂ悭���Ă��܂��B
-�I�y���[�^�͒ʏ�A���ɏ����ȃ`�����N�ō�Ƃ����Ă���A���G�ȏ����̂��߂ɑ����̉��Z�q����������K�v�����邽�߁A�����Rx�̒ʏ�̃f�t�H���g�ł��B
-�������A�R���[�`���ł͂��ꂪ�ُ�ł��B�R���[�`���ł́A�C�ӂ̕��G�ȏ������s�����Ƃ��ł��܂��B
-�ʏ�A�����̃��[�J�[�R���[�`���ԂŃt�@���C���ƃt�@���A�E�g�������G�ȃp�C�v���C���̃X�g���[�������R���[�`�����`�F�[�����邾���ōς݂܂��B
+コルーチンがチャネルに要素を送ると、[send][SendChannel.send]を呼び出したスレッドは[Unconfined]ディスパッチャーでコルーチンのコードの実行を開始することがあります。
+`send` を呼び出す元のプロデューサーコルーチンは、unconfinedのコンシューマーコルーチンが次の中断ポイントに達するまで一時停止されます。
+これは、スレッドシフト演算子がない場合のRx世界でのロックステップのシングルスレッドの `onNext` の実行と非常によく似ています。
+オペレータは通常、非常に小さなチャンクで作業をしており、複雑な処理のために多くの演算子を結合する必要があるため、これはRxの通常のデフォルトです。
+しかし、コルーチンではこれが異常です。コルーチンでは、任意の複雑な処理を行うことができます。
+通常、複数のワーカーコルーチン間でファンインとファンアウトを持つ複雑なパイプラインのストリーム処理コルーチンをチェーンするだけで済みます。
 
 <!--- MODULE kotlinx-coroutines-core -->
 <!--- INDEX kotlinx.coroutines.experimental -->
