@@ -687,11 +687,11 @@ fun asyncSomethingUsefulTwo() = async(CommonPool)  {
 // この例では、 `main` の右側に `runBlocking` がないことに注意してください
 fun main(args: Array<String>) {
     val time = measureTimeMillis {
-        // we can initiate async actions outside of a coroutine
+        // コルーチンの外部で非同期アクションを開始できる
         val one = asyncSomethingUsefulOne()
         val two = asyncSomethingUsefulTwo()
-        // but waiting for a result must involve either suspending or blocking.
-        // here we use `runBlocking { ... }` to block the main thread while waiting for the result
+        // 結果を待つにはサスペンドまたはブロックする必要がある。
+        // ここでは `runBlocking { ... }` を使用して、結果を待つ間メインスレッドをブロックする
         runBlocking {
             println("The answer is ${one.await() + two.await()}")
         }
@@ -759,7 +759,7 @@ The difference between parent [context][CoroutineScope.context] and [Unconfined]
 中断後、呼び出されたサスペンド関数によって完全に決定されたスレッドで再開されます。
 コルーチンがCPU時間を消費しない場合や、特定のスレッドに限定された共有データ（UIなど）を更新しない場合、Unconfinedディスパッチャが適切です。
 
-一方、[CoroutineScope]インターフェイスを介してコルーチンのブロック内で使用できる[コンテキスト][CoroutineScope.context]プロパティは、この特定のコルーチンのコンテキストへの参照です。
+一方、[CoroutineScope]インターフェイスを介してコルーチンのブロック内で使用できる[context][CoroutineScope.context]プロパティは、この特定のコルーチンのコンテキストへの参照です。
 このようにして、親コンテキストを継承することができます。
 特に、[runBlocking]のデフォルトコンテキストは呼び出し側スレッドに限定されているため、継承すると予測可能なFIFOスケジューリングを使用してこのスレッドに実行を限定するという効果があります。
 
