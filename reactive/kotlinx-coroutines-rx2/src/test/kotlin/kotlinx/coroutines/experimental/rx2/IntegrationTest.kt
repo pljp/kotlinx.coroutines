@@ -52,7 +52,7 @@ class IntegrationTest(
 
     @Test
     fun testEmpty(): Unit = runBlocking {
-        val observable = rxObservable<String>(ctx(context)) {
+        val observable = rxObservable<String>(ctx(coroutineContext)) {
             if (delay) delay(1)
             // does not send anything
         }
@@ -69,7 +69,7 @@ class IntegrationTest(
 
     @Test
     fun testSingle() = runBlocking<Unit> {
-        val observable = rxObservable<String>(ctx(context)) {
+        val observable = rxObservable<String>(ctx(coroutineContext)) {
             if (delay) delay(1)
             send("OK")
         }
@@ -87,7 +87,7 @@ class IntegrationTest(
     @Test
     fun testNumbers() = runBlocking<Unit> {
         val n = 100 * stressTestMultiplier
-        val observable = rxObservable<Int>(ctx(context)) {
+        val observable = rxObservable<Int>(ctx(coroutineContext)) {
             for (i in 1..n) {
                 send(i)
                 if (delay) delay(1)
@@ -97,8 +97,8 @@ class IntegrationTest(
         assertThat(observable.awaitLast(), IsEqual(n))
         assertIAE { observable.awaitSingle() }
         checkNumbers(n, observable)
-        val channel = observable.open()
-        checkNumbers(n, channel.asObservable(ctx(context)))
+        val channel = observable.openSubscription()
+        checkNumbers(n, channel.asObservable(ctx(coroutineContext)))
         channel.close()
     }
 

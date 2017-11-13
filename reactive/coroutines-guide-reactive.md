@@ -26,7 +26,7 @@ package guide.test
 
 import org.junit.Test
 
-class GuideReactiveTest {
+class GuideReactiveTest : ReactiveTestBase() {
 -->
 
 # コルーチンによるリアクティブストリームのガイド
@@ -96,7 +96,7 @@ import kotlinx.coroutines.experimental.channels.*
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     // 200ミリ秒間隔で遅延する1～3の数値を生成するチャンネルを作成する
-    val source = produce<Int>(context) {
+    val source = produce<Int>(coroutineContext) {
         println("Begin") // このコルーチンの開始を出力する
         for (x in 1..3) {
             delay(200) // 200ミリ秒待つ
@@ -146,7 +146,7 @@ import kotlinx.coroutines.experimental.reactive.*
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     // 200ミリ秒間隔で遅延する1～3の数値を生成するパブリッシャーを作成する
-    val source = publish<Int>(context) {  
+    val source = publish<Int>(coroutineContext) {  
     //           ^^^^^^^  <---  以前の例との違いはここ
         println("Begin") // このコルーチンの開始を出力する
         for (x in 1..3) {
@@ -203,7 +203,7 @@ Rx用語では、これは _コールド_ パブリッシャーと呼ばれま�
 ### サブスクリプションとキャンセル
 
 前のセクションの例では、 `source.consumeEach { ... }` スニペットを使用してサブスクリプションを開き、そこからすべての要素を受け取っています。
-チャンネルから受け取っている要素をどう処理するかをもっとコントロールする必要がある場合は、次の例のように[Publisher.open][org.reactivestreams.Publisher.open]を使用できます。
+チャンネルから受け取っている要素をどう処理するかをもっとコントロールする必要がある場合は、次の例のように[Publisher.openSubscription][org.reactivestreams.Publisher.openSubscription]を使用できます。
 
 <!--- INCLUDE
 import io.reactivex.*
@@ -217,7 +217,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
         .doOnSubscribe { println("OnSubscribe") } // 洞察を提供する
         .doFinally { println("Finally") }         // ... 何が起きているか
     var cnt = 0 
-    source.open().use { channel -> // ソースのチャネルを開く
+    source.openSubscription().use { channel -> // ソースのチャネルを開く
         for (x in channel) { // 反復してチャネルから要素を受け取る
             println(x)
             if (++cnt >= 3) break // 3つの要素をプリントしたら中止する
@@ -241,7 +241,7 @@ Finally
 
 <!--- TEST -->
  
-明示的に `open` すると、対応するサブスクリプションを[close][SubscriptionReceiveChannel.close]して、ソースからの登録を解除しなければなりません。
+明示的に `openSubscription` すると、対応するサブスクリプションを[close][SubscriptionReceiveChannel.close]して、ソースからの登録を解除しなければなりません。
 しかし、明示的に `close` を呼び出すのではなく、このコードはKotlinの標準ライブラリの[use](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/use.html)関数に頼っています。
 インストールされた[doFinally](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#doFinally(io.reactivex.functions.Action))リスナーは、サブスクリプションが実際に閉じられていることを確認するために "Finally" をプリントします。
 
@@ -306,7 +306,7 @@ import io.reactivex.schedulers.Schedulers
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> { 
     // コルーチン - メインスレッドコンテキストにおける要素の高速プロデューサー
-    val source = rxFlowable(context) {
+    val source = rxFlowable(coroutineContext) {
         for (x in 1..3) {
             send(x) // これはサスペンド関数
             println("Sent $x") // アイテムが正常に送信された後にプリントする
@@ -436,12 +436,13 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     subject.onNext("one")
     subject.onNext("two")
     // 最新の更新をプリントするコルーチンを起動
-    launch(context) { // コルーチンのメインスレッドのコンテキストを使用する
+    launch(coroutineContext) { // コルーチンのメインスレッドのコンテキストを使用する
         subject.consumeEach { println(it) }
     }
     subject.onNext("three")
     subject.onNext("four")
     yield() // 起動したコルーチンへメインスレッドを譲る <--- ここ
+    subject.onComplete() // サブジェクトのシーケンスを完了してコンシューマーもキャンセルする
 }
 ```
 
@@ -471,12 +472,13 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     broadcast.offer("one")
     broadcast.offer("two")
     // 最新の更新をプリントするコルーチンを起動
-    launch(context) { // コルーチンのメインスレッドのコンテキストを使用する
+    launch(coroutineContext) { // コルーチンのメインスレッドのコンテキストを使用する
         broadcast.consumeEach { println(it) }
     }
     broadcast.offer("three")
     broadcast.offer("four")
     yield() // 起動したコルーチンへメインスレッドを譲る
+    broadcast.close() // ブロードキャストチャネルを閉じてコンシューマーもキャンセルする
 }
 ```
 
@@ -584,8 +586,8 @@ fun range(context: CoroutineContext, start: Int, count: Int) = publish<Int>(cont
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-   range(context, 1, 5)
-       .fusedFilterMap(context, { it % 2 == 0}, { "$it is even" })
+   range(coroutineContext, 1, 5)
+       .fusedFilterMap(coroutineContext, { it % 2 == 0}, { "$it is even" })
        .consumeEach { println(it) } // 結果の文字列をすべてプリントする
 }
 ```
@@ -618,11 +620,11 @@ import kotlinx.coroutines.experimental.selects.whileSelect
 
 ```kotlin
 fun <T, U> Publisher<T>.takeUntil(context: CoroutineContext, other: Publisher<U>) = publish<T>(context) {
-    this@takeUntil.open().use { thisChannel ->           // Publisher<T>のチャネルを明示的に開く
-        other.open().use { otherChannel ->               // Publisher<U>のチャネルを明示的に開く
+    this@takeUntil.openSubscription().use { thisChannel -> // Publisher<T>のチャネルを明示的に開く
+        other.openSubscription().use { otherChannel ->     // Publisher<U>のチャネルを明示的に開く
             whileSelect {
-                otherChannel.onReceive { false }         // `other` から何か要素を受け取ったら脱出する
-                thisChannel.onReceive { send(it); true } // thisChannelの要素を再送して続行する
+                otherChannel.onReceive { false }          // `other` から何か要素を受け取ったら脱出する
+                thisChannel.onReceive { send(it); true }  // thisChannelの要素を再送して続行する
             }
         }
     }
@@ -647,9 +649,9 @@ fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: 
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val slowNums = rangeWithInterval(context, 200, 1, 10)         // 200ミリ秒間隔の数列
-    val stop = rangeWithInterval(context, 500, 1, 10)             // 最初のものは500ミリ秒後
-    slowNums.takeUntil(context, stop).consumeEach { println(it) } // テストしてみる
+    val slowNums = rangeWithInterval(coroutineContext, 200, 1, 10)         // 200ミリ秒間隔の数列
+    val stop = rangeWithInterval(coroutineContext, 500, 1, 10)             // 最初のものは500ミリ秒後
+    slowNums.takeUntil(coroutineContext, stop).consumeEach { println(it) } // テストしてみる
 }
 ```
 
@@ -680,16 +682,16 @@ import kotlin.coroutines.experimental.CoroutineContext
 ```kotlin
 fun <T> Publisher<Publisher<T>>.merge(context: CoroutineContext) = publish<T>(context) {
   consumeEach { pub ->                 // ソースチャンネルから受信した各パブリッシャー
-      launch(this.context) {           // 子コルーチンを起動
+      launch(coroutineContext) {       // 子コルーチンを起動
           pub.consumeEach { send(it) } // このパブリッシャーからすべての要素を再送する
       }
   }
 }
 ```
 
-注: [launch]コルーチンビルダーの呼び出しで `this.context` を使用します。 [publish]ビルダーによって提供される[CoroutineScope.context]を参照するために使用されます。
+注: [launch]コルーチンビルダーの呼び出しで `coroutineContext` を使用します。 [publish]ビルダーによって提供される[CoroutineScope.coroutineContext]を参照するために使用されます。
 このようにして、ここで開始されたコルーチンは `publish` コルーチンの[children](../coroutines-guide.md#children-of-a-coroutine)であり、`publish` コルーチンがキャンセルされた場合や完了した場合にキャンセルされます。
-この実装は、元のパブリッシャーが完了するとすぐに完了します。
+さらに、親コルーチンはすべての子が完了するまで待機するので、この実装はすべての受信ストリームを完全にマージします。
 
 テストのために、前の例の `rangeWithInterval` 関数と、いくらか遅れてその結果を2回送るプロデューサーを書くことから始めましょう。
 
@@ -716,7 +718,7 @@ fun testPub(context: CoroutineContext) = publish<Publisher<Int>>(context) {
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    testPub(context).merge(context).consumeEach { println(it) } // ストリーム全体をプリントする
+    testPub(coroutineContext).merge(coroutineContext).consumeEach { println(it) } // ストリーム全体をプリントする
 }
 ```
 
@@ -731,6 +733,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 3
 4
 12
+13
 ```
 
 <!--- TEST -->
@@ -963,7 +966,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 [Unconfined]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-unconfined/index.html
 [yield]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/yield.html
 [launch]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/launch.html
-[CoroutineScope.context]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-scope/context.html
+[CoroutineScope.coroutineContext]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-scope/coroutine-context.html
 [CommonPool]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-common-pool/index.html
 [Job.join]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-job/join.html
 <!--- INDEX kotlinx.coroutines.experimental.channels -->
@@ -984,7 +987,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 <!--- INDEX kotlinx.coroutines.experimental.reactive -->
 [publish]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-reactive/kotlinx.coroutines.experimental.reactive/publish.html
 [org.reactivestreams.Publisher.consumeEach]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-reactive/kotlinx.coroutines.experimental.reactive/org.reactivestreams.-publisher/consume-each.html
-[org.reactivestreams.Publisher.open]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-reactive/kotlinx.coroutines.experimental.reactive/org.reactivestreams.-publisher/open.html
+[org.reactivestreams.Publisher.openSubscription]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-reactive/kotlinx.coroutines.experimental.reactive/org.reactivestreams.-publisher/open-subscription.html
 <!--- MODULE kotlinx-coroutines-rx2 -->
 <!--- INDEX kotlinx.coroutines.experimental.rx2 -->
 [rxFlowable]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-rx2/kotlinx.coroutines.experimental.rx2/rx-flowable.html

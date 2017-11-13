@@ -20,8 +20,8 @@ package guide.$$1.example$$2
 
 import kotlinx.coroutines.experimental.*
 -->
-<!--- KNIT     kotlinx-coroutines-core/src/test/kotlin/guide/.*\.kt -->
-<!--- TEST_OUT kotlinx-coroutines-core/src/test/kotlin/guide/test/GuideTest.kt
+<!--- KNIT     core/kotlinx-coroutines-core/src/test/kotlin/guide/.*\.kt -->
+<!--- TEST_OUT core/kotlinx-coroutines-core/src/test/kotlin/guide/test/GuideTest.kt
 // This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
 package guide.test
 
@@ -52,7 +52,7 @@ class GuideTest {
   * [コルーチンは軽量](#コルーチンは軽量)
   * [コルーチンはデーモンスレッドに似ている](#コルーチンはデーモンスレッドに似ている)
 * [キャンセルとタイムアウト](#キャンセルとタイムアウト)
-  * [コルーチンの実行をキャンセル](#コルーチンの実行をキャンセル)
+  * [コルーチンの実行をキャンセルする](#コルーチンの実行をキャンセルする)
   * [キャンセルは協調的](#キャンセルは協調的)
   * [計算コードをキャンセル可能にする](#計算コードをキャンセル可能にする)
   * [finallyでリソースを閉じる](#finallyでリソースを閉じる)
@@ -71,6 +71,7 @@ class GuideTest {
   * [コンテキストにおけるジョブ](#コンテキストにおけるジョブ)
   * [コルーチンの子](#コルーチンの子)
   * [コンテキストの結合](#コンテキストの結合)
+  * [親の責任](#親の責任)
   * [デバッグのためのコルーチンの命名](#デバッグのためのコルーチンの命名)
   * [明示的なジョブによるキャンセル](#明示的なジョブによるキャンセル)
 * [チャネル](#チャネル)
@@ -111,7 +112,7 @@ class GuideTest {
 
 ```kotlin
 fun main(args: Array<String>) {
-    launch(CommonPool) { // 共有スレッドプールに新しいコルーチンを作成する
+    launch { // 新しいコルーチンを起動する
         delay(1000L) // 1秒間ノンブロッキング遅延 (デフォルトの時間単位はms)
         println("World!") // delayのあとでプリント
     }
@@ -120,7 +121,7 @@ fun main(args: Array<String>) {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-01.kt)で完全なコードを取得できます。
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-01.kt)で完全なコードを取得できます。
 
 このコードを実行します。
 
@@ -133,9 +134,9 @@ World!
 
 基本的に、コルーチンは軽量スレッドです。
 それらは[launch] _コルーチンビルダー_ で起動します。
-`launch(CommonPool) { ... }` を `thread { ... }` に、 `delay(...)` を `Thread.sleep(...)` に置き換えても同じ結果が得られます。試してみてください。
+`launch { ... }` を `thread { ... }` に、 `delay(...)` を `Thread.sleep(...)` に置き換えても同じ結果が得られます。試してみてください。
 
-`launch(CommonPool)` を `thread` に置き換えて起動すると、コンパイラは次のエラーを生成します。
+`launch` を `thread` に置き換えて起動すると、コンパイラは次のエラーを生成します。
 
 ```
 Error: Kotlin: サスペンド関数は、コルーチンまたは他のサスペンド関数からのみ呼び出すことができます
@@ -151,7 +152,7 @@ Error: Kotlin: サスペンド関数は、コルーチンまたは他のサス�
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> { // メインコルーチンを開始
-    launch(CommonPool) { // 共有スレッドプールに新しいコルーチンを作成する
+    launch { // 新しいコルーチンを起動する
         delay(1000L)
         println("World!")
     }
@@ -160,7 +161,7 @@ fun main(args: Array<String>) = runBlocking<Unit> { // メインコルーチン�
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-02.kt)で完全なコードを取得できます。
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-02.kt)で完全なコードを取得できます。
 
 <!--- TEST
 Hello,
@@ -192,7 +193,7 @@ class MyTest {
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val job = launch(CommonPool) { // 新しいコルーチンを作成し、そのJobへの参照を保持する
+    val job = launch { // 新しいコルーチンを起動し、そのJobへの参照を保持する
         delay(1000L)
         println("World!")
     }
@@ -201,7 +202,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-03.kt)で完全なコードを取得できます。
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-03.kt)で完全なコードを取得できます。
 
 <!--- TEST
 Hello,
@@ -212,14 +213,14 @@ World!
 
 ### 関数抽出リファクタリング
 
-`launch(CommonPool) { ... }` の中のコードブロックを別の関数に抽出しましょう。
+`launch { ... }` の中のコードブロックを別の関数に抽出しましょう。
 このコードで "Extract function"リファクタリングを実行すると、 `suspend` 修飾子付きの新しい関数が得られます。
 それがあなたの最初の _サスペンド関数_ です。
 サスペンド関数は、通常の関数と同様にコルーチン内で使用できますが、追加機能として、この例では `delay`のような他のサスペンド関数を使用してコルーチンの実行を _中断_ することができます。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val job = launch(CommonPool) { doWorld() }
+    val job = launch { doWorld() }
     println("Hello,")
     job.join()
 }
@@ -231,7 +232,7 @@ suspend fun doWorld() {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-04.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-04.kt)で完全なコードを取得できます
 
 <!--- TEST
 Hello,
@@ -244,8 +245,8 @@ World!
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val jobs = List(100_000) { // コルーチンをたくさん作り、ジョブをリストする
-        launch(CommonPool) {
+    val jobs = List(100_000) { // コルーチンをたくさん起動し、ジョブをリストする
+        launch {
             delay(1000L)
             print(".")
         }
@@ -254,11 +255,11 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-05.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-05.kt)で完全なコードを取得できます
 
 <!--- TEST lines.size == 1 && lines[0] == ".".repeat(100_000) -->
 
-10万個のコルーチンを開始し、1分後に各コルーチンがドットをプリントします。
+10万個のコルーチンを起動し、1分後に各コルーチンがドットをプリントします。
 スレッドを使って試したらどうなるでしょうか？ （ほとんどの場合、あなたのコードはメモリ不足エラーを引き起こすでしょう）
 
 ### コルーチンはデーモンスレッドに似ている
@@ -267,7 +268,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    launch(CommonPool) {
+    launch {
         repeat(1000) { i ->
             println("I'm sleeping $i ...")
             delay(500L)
@@ -277,7 +278,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-06.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-basic-06.kt)で完全なコードを取得できます
 
 実行すると、3行を出力して終了することがわかります。
 
@@ -295,7 +296,7 @@ I'm sleeping 2 ...
 
 このセクションでは、コルーチンのキャンセルとタイムアウトについて説明します。
 
-### コルーチンの実行をキャンセル
+### コルーチンの実行をキャンセルする
 
 小さなアプリケーションでは、"main"メソッドからのリターンは、暗黙的にすべてのコルーチンを終了させる良い考えのように思えるかもしれません。
 大規模で長時間実行されるアプリケーションでは、きめ細かな制御が必要です。
@@ -303,7 +304,7 @@ I'm sleeping 2 ...
  
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val job = launch(CommonPool) {
+    val job = launch {
         repeat(1000) { i ->
             println("I'm sleeping $i ...")
             delay(500L)
@@ -312,12 +313,12 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     delay(1300L) // 少し遅らせる
     println("main: I'm tired of waiting!")
     job.cancel() // ジョブをキャンセル
-    delay(1300L) // 本当にキャンセルされたことを確認するために少し遅らせる
+    job.join() // ジョブの完了を待つ
     println("main: Now I can quit.")
 }
 ``` 
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-01.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-01.kt)で完全なコードを取得できます
 
 次の出力が生成されます。
 
@@ -332,6 +333,7 @@ main: Now I can quit.
 <!--- TEST -->
 
 メインが `job.cancel` を呼び出すとすぐにキャンセルされるため他のコルーチンからの出力は表示されません。
+[cancel][Job.cancel]と[join][Job.join]の呼び出しを組み合わせた[Job]の拡張関数[cancelAndJoin]もあります。
 
 ### キャンセルは協調的
 
@@ -342,26 +344,26 @@ main: Now I can quit.
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val job = launch(CommonPool) {
-        var nextPrintTime = 0L
+    val startTime = System.currentTimeMillis()
+    val job = launch {
+        var nextPrintTime = startTime
         var i = 0
-        while (i < 10) { // 計算ループ
-            val currentTime = System.currentTimeMillis()
-            if (currentTime >= nextPrintTime) {
+        while (i < 5) { // CPUを浪費するだけの計算ループ
+            // 1秒間に2回メッセージをプリントする
+            if (System.currentTimeMillis() >= nextPrintTime) {
                 println("I'm sleeping ${i++} ...")
-                nextPrintTime = currentTime + 500L
+                nextPrintTime += 500L
             }
         }
     }
     delay(1300L) // 少し遅らせる
     println("main: I'm tired of waiting!")
-    job.cancel() // ジョブをキャンセル
-    delay(1300L) // キャンセルされたかどうか確かめるために少し遅らせる…
+    job.cancelAndJoin() // ジョブをキャンセルして完了するのを待つ
     println("main: Now I can quit.")
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-02.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-02.kt)で完全なコードを取得できます
 
 実行して、キャンセル後も "I'm sleeping" とプリントし続けることを確認します。
 
@@ -372,43 +374,42 @@ I'm sleeping 2 ...
 main: I'm tired of waiting!
 I'm sleeping 3 ...
 I'm sleeping 4 ...
-I'm sleeping 5 ...
 main: Now I can quit.
 -->
 
 ### 計算コードをキャンセル可能にする
 
 計算コードをキャンセル可能にするには2つの方法があります。
-1つは、定期的にサスペンド関数を呼び出すことです。
+1つは、キャンセルをチェックするサスペンド関数を定期的に呼び出すことです。
 その目的のために良い選択肢である[yield]関数があります。
 もう1つは、キャンセルステータスを明示的にチェックすることです。後者の方法を試してみましょう。
 
-前の例の `while (true)` を `while (isActive)` に置き換えて再実行してください。
+前の例の `while (i < 5)` を `while (isActive)` に置き換えて再実行してください。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val job = launch(CommonPool) {
-        var nextPrintTime = 0L
+    val startTime = System.currentTimeMillis()
+    val job = launch {
+        var nextPrintTime = startTime
         var i = 0
         while (isActive) { // キャンセル可能な計算ループ
-            val currentTime = System.currentTimeMillis()
-            if (currentTime >= nextPrintTime) {
+            // 1秒間に2回メッセージをプリントする
+            if (System.currentTimeMillis() >= nextPrintTime) {
                 println("I'm sleeping ${i++} ...")
-                nextPrintTime = currentTime + 500L
+                nextPrintTime += 500L
             }
         }
     }
     delay(1300L) // 少し遅らせる
     println("main: I'm tired of waiting!")
-    job.cancel() // ジョブをキャンセル
-    delay(1300L) // キャンセルされたかどうか確かめるために少し遅らせる…
+    job.cancelAndJoin() // ジョブをキャンセルして完了するのを待つ
     println("main: Now I can quit.")
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-03.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-03.kt)で完全なコードを取得できます
 
-ご覧のとおり、このループはキャンセルできます。
+ご覧のとおり、このループはキャンセルされました。
 [isActive][CoroutineScope.isActive]は、[CoroutineScope]オブジェクトを介してコルーチンのコード内で使用できるプロパティです。
 
 <!--- TEST
@@ -422,11 +423,11 @@ main: Now I can quit.
 ### finallyでリソースを閉じる
 
 キャンセル可能なサスペンド関数は、キャンセルの際に通常の方法で処理できるCancellationExceptionをスローします。
-たとえば、 `try {...} finally {...}` とKotlin `use` 関数は、コルーチンがキャンセルされたときに、通常の終了処理を実行します。
+たとえば、 `try {...} finally {...}` 式とKotlin `use` 関数は、コルーチンがキャンセルされたときに、通常の終了処理を実行します。
  
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val job = launch(CommonPool) {
+    val job = launch {
         try {
             repeat(1000) { i ->
                 println("I'm sleeping $i ...")
@@ -438,15 +439,14 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     }
     delay(1300L) // 少し遅らせる
     println("main: I'm tired of waiting!")
-    job.cancel() // ジョブをキャンセル
-    delay(1300L) // 本当にキャンセルされたことを確認するために少し遅らせる
+    job.cancelAndJoin() // ジョブをキャンセルして完了を待つ
     println("main: Now I can quit.")
 }
 ``` 
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-04.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-04.kt)で完全なコードを取得できます
 
-この例は次の出力を生成します。
+[join][Job.join]も[cancelAndJoin]も、すべてのファイナライズ・アクションが完了するまで待機するため、上記の例では次の出力が生成されます。
 
 ```text
 I'm sleeping 0 ...
@@ -467,7 +467,7 @@ main: Now I can quit.
  
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val job = launch(CommonPool) {
+    val job = launch {
         try {
             repeat(1000) { i ->
                 println("I'm sleeping $i ...")
@@ -483,13 +483,12 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     }
     delay(1300L) // delay a bit
     println("main: I'm tired of waiting!")
-    job.cancel() // cancels the job
-    delay(1300L) // delay a bit to ensure it was cancelled indeed
+    job.cancelAndJoin() // ジョブをキャンセルして完了を待つ
     println("main: Now I can quit.")
 }
 ``` 
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-05.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-05.kt)で完全なコードを取得できます
 
 <!--- TEST
 I'm sleeping 0 ...
@@ -518,7 +517,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-06.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-06.kt)で完全なコードを取得できます
 
 これは次の出力を生成します。
 
@@ -526,18 +525,43 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 I'm sleeping 0 ...
 I'm sleeping 1 ...
 I'm sleeping 2 ...
-Exception in thread "main" kotlinx.coroutines.experimental.TimeoutException: Timed out waiting for 1300 MILLISECONDS
+Exception in thread "main" kotlinx.coroutines.experimental.TimeoutCancellationException: Timed out waiting for 1300 MILLISECONDS
 ```
 
 <!--- TEST STARTS_WITH -->
 
-[withTimeout]によってスローされる `TimeoutException` は、[CancellationException]のプライベートサブクラスです。
+[withTimeout]によってスローされる `TimeoutCancellationException` は、[CancellationException]のサブクラスです。
 先のコンソールにはスタックトレースが表示されていませんでした。
 キャンセルされたコルーチン内の `CancellationException` がコルーチン完了の通常の理由であると考えられるためです。
 しかし、この例では `main` 関数の中で `withTimeout` を使用しています。
-
 キャンセルは単なる例外なので、すべてのリソースは通常の方法で閉じられます。
-タイムアウト時に特別なアクションを追加する必要がある場合は、 `try {...} catch (e：CancellationException) {...}` ブロックでタイムアウトを使ったコードをラップすることができます。
+任意の種類のタイムアウトに特別なアクションを追加する必要がある場合は、try {...} catch（e：TimeoutCancellationException）{...} `ブロックでタイムアウトを指定してコードをラップすることができます。また、[withTimeout]と似た[withTimeoutOrNull]関数を使用します。これは例外をスローするのではなくタイムアウトで `null` を返します。
+
+```kotlin
+fun main(args: Array<String>) = runBlocking<Unit> {
+    val result = withTimeoutOrNull(1300L) {
+        repeat(1000) { i ->
+            println("I'm sleeping $i ...")
+            delay(500L)
+        }
+        "Done" // この結果が出る前にキャンセルされます
+    }
+    println("Result is $result")
+}
+```
+
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-cancel-07.kt)で完全なコードを取得できます
+
+このコードを実行しても例外は出ません。
+
+```text
+I'm sleeping 0 ...
+I'm sleeping 1 ...
+I'm sleeping 2 ...
+Result is null
+```
+
+<!--- TEST -->
 
 ## サスペンド関数の作成
 
@@ -582,7 +606,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-01.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-01.kt)で完全なコードを取得できます
 
 これは次のような出力をします。
 
@@ -591,7 +615,7 @@ The answer is 42
 Completed in 2017 ms
 ```
 
-<!--- TEST FLEXIBLE_TIME -->
+<!--- TEST ARBITRARY_TIME -->
 
 ### asyncを使用した並列動作
 
@@ -606,15 +630,15 @@ Completed in 2017 ms
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val time = measureTimeMillis {
-        val one = async(CommonPool) { doSomethingUsefulOne() }
-        val two = async(CommonPool) { doSomethingUsefulTwo() }
+        val one = async { doSomethingUsefulOne() }
+        val two = async { doSomethingUsefulTwo() }
         println("The answer is ${one.await() + two.await()}")
     }
     println("Completed in $time ms")
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-02.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-02.kt)で完全なコードを取得できます
 
 次のようなものが生成されます。
 
@@ -623,29 +647,29 @@ The answer is 42
 Completed in 1017 ms
 ```
 
-<!--- TEST FLEXIBLE_TIME -->
+<!--- TEST ARBITRARY_TIME -->
 
 2つのコルーチンが同時に実行されるため、これは2倍高速です。
 コルーチンの並行性は常に明示的であることに注意してください。
 
 ### 遅延して開始されるasync
 
-[CoroutineStart.LAZY]パラメータを使用して[async]にするための遅延オプションがあります。
+オプションの `start` パラメーターに[CoroutineStart.LAZY]値を使用する[async]の遅延オプションがあります。
 コルーチンは、 [await][Deferred.await]または [start][Job.start]関数が呼び出されたときにその結果が必要な場合にのみ開始されます。
 前の例とこのオプションだけが異なる次の例を実行します。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val time = measureTimeMillis {
-        val one = async(CommonPool, CoroutineStart.LAZY) { doSomethingUsefulOne() }
-        val two = async(CommonPool, CoroutineStart.LAZY) { doSomethingUsefulTwo() }
+        val one = async(start = CoroutineStart.LAZY) { doSomethingUsefulOne() }
+        val two = async(start = CoroutineStart.LAZY) { doSomethingUsefulTwo() }
         println("The answer is ${one.await() + two.await()}")
     }
     println("Completed in $time ms")
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-03.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-03.kt)で完全なコードを取得できます
 
 次のようなものが生成されます。
 
@@ -654,7 +678,7 @@ The answer is 42
 Completed in 2017 ms
 ```
 
-<!--- TEST FLEXIBLE_TIME -->
+<!--- TEST ARBITRARY_TIME -->
 
 なんと、シーケンシャルな実行に戻ってしまいました。これは、最初に `one` を開始して待ってから、`two` を開始して待つためです。
 遅延にとって意図されたユースケースではありません。
@@ -667,12 +691,12 @@ Completed in 2017 ms
 
 ```kotlin
 // The result type of asyncSomethingUsefulOne is Deferred<Int>
-fun asyncSomethingUsefulOne() = async(CommonPool) {
+fun asyncSomethingUsefulOne() = async {
     doSomethingUsefulOne()
 }
 
 // The result type of asyncSomethingUsefulTwo is Deferred<Int>
-fun asyncSomethingUsefulTwo() = async(CommonPool)  {
+fun asyncSomethingUsefulTwo() = async {
     doSomethingUsefulTwo()
 }
 ```
@@ -700,58 +724,68 @@ fun main(args: Array<String>) {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-04.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-compose-04.kt)で完全なコードを取得できます
 
-<!--- TEST FLEXIBLE_TIME
+<!--- TEST ARBITRARY_TIME
 The answer is 42
 Completed in 1085 ms
 -->
 
 ## コルーチンコンテキストとディスパッチャー
 
-私たちはすでに `launch(CommonPool) {...}` 、 `async(CommonPool) {...}` 、 `run(NonCancellable) {...}` などを見てきました。
-これらのコードスニペット[CommonPool]と[NonCancellable]は _コルーチンコンテキスト_ です。
-このセクションでは、その他の選択肢について説明します。
+コルーチンは、Kotlin標準ライブラリで定義されている[CoroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines.experimental/-coroutine-context/)型の値で表される何らかのコンテキストで常に実行されます。
+コルーチンコンテキストは、さまざまな要素のセットです。 主な要素は、以前に見たコルーチンの[Job]とこのセクションで取り上げたディスパッチャーです。
+
 
 ### ディスパッチャーとスレッド
 
-コルーチンコンテキストには、[_コルーチンディスパッチャ_][CoroutineDispatcher]が含まれており、対応するコルーチンが実行に使用するスレッド（単独または複数）を決定します。コルーチンディスパッチャは、コルーチンの実行を特定のスレッドに限定したり、スレッドプールにディスパッチしたり、制約なしで実行させたりすることができます。 次の例を試してください。
+コルーチンコンテキストには、対応するコルーチンが実行に使用するスレッドを決定する _コルーチンディスパッチャー_ （[CoroutineDispatcher]を参照）が含まれています。
+コルーチンディスパッチャーは、コルーチンの実行を特定のスレッドに限定したり、スレッドプールにディスパッチしたり、制約なしで実行させたりすることができます。
+
+[launch]や[async]のようなすべてのコルーチンビルダーは、新しいコルーチンとその他のコンテキスト要素のディスパッチャーを明示的に指定するために使用できるオプションの[CoroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines.experimental/-coroutine-context/) 
+パラメータを受け入れます。
+
+次の例を試してください。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val jobs = arrayListOf<Job>()
     jobs += launch(Unconfined) { // 制約なし -- メインスレッドで動作する
-        println(" 'Unconfined': I'm working in thread ${Thread.currentThread().name}")
+        println("      'Unconfined': I'm working in thread ${Thread.currentThread().name}")
     }
-    jobs += launch(context) { // 親(runBlockingコルーチン)のコンテキスト
-        println("    'context': I'm working in thread ${Thread.currentThread().name}")
+    jobs += launch(coroutineContext) { // 親(runBlockingコルーチン)のコンテキスト
+        println("'coroutineContext': I'm working in thread ${Thread.currentThread().name}")
     }
     jobs += launch(CommonPool) { // ForkJoinPool.commonPool(または同様なもの)にディスパッチされる
-        println(" 'CommonPool': I'm working in thread ${Thread.currentThread().name}")
+        println("      'CommonPool': I'm working in thread ${Thread.currentThread().name}")
     }
     jobs += launch(newSingleThreadContext("MyOwnThread")) { // 独自の新しいスレッドを取得
-        println("     'newSTC': I'm working in thread ${Thread.currentThread().name}")
+        println("          'newSTC': I'm working in thread ${Thread.currentThread().name}")
     }
     jobs.forEach { it.join() }
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-01.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-context-01.kt)で完全なコードを取得できます
 
 次の出力を生成します（おそらく異なる順序で）。
 
 ```text
- 'Unconfined': I'm working in thread main
- 'CommonPool': I'm working in thread ForkJoinPool.commonPool-worker-1
-     'newSTC': I'm working in thread MyOwnThread
-    'context': I'm working in thread main
+      'Unconfined': I'm working in thread main
+      'CommonPool': I'm working in thread ForkJoinPool.commonPool-worker-1
+          'newSTC': I'm working in thread MyOwnThread
+'coroutineContext': I'm working in thread main
 ```
 
 <!--- TEST LINES_START_UNORDERED -->
 
-The difference between parent [context][CoroutineScope.context] and [Unconfined] context will be shown later.
+前のセクションで使用したデフォルトのディスパッチャーは[DefaultDispatcher]によって表現され、現在の実装では[CommonPool]と同じです。
+従って、 `launch { ... }` は `launch（DefaultDispather）{ ... }` と同じです。これは  `launch（CommonPool）{ ... }` と同じです。
 
-親[コンテキスト][CoroutineScope.context]と[Unconfined]コンテキストの違いについては、後で説明します。
+親[coroutineContext][CoroutineScope.coroutineContext]と[Unconfined]コンテキストの違いについては後で説明します。
+
+[newSingleThreadContext]は非常に高価なリソースである新しいスレッドを作成することに注意してください。
+実際のアプリケーションでは、不要になったときに[close][ThreadPoolDispatcher.close]関数を使用して解放するか、トップレベル変数に格納してアプリケーション全体で再利用する必要があります。
 
 ### 制約なし対制約ディスパッチャー
  
@@ -759,45 +793,45 @@ The difference between parent [context][CoroutineScope.context] and [Unconfined]
 中断後、呼び出されたサスペンド関数によって完全に決定されたスレッドで再開されます。
 コルーチンがCPU時間を消費しない場合や、特定のスレッドに限定された共有データ（UIなど）を更新しない場合、Unconfinedディスパッチャが適切です。
 
-一方、[CoroutineScope]インターフェイスを介してコルーチンのブロック内で使用できる[context][CoroutineScope.context]プロパティは、この特定のコルーチンのコンテキストへの参照です。
+一方、[CoroutineScope]インターフェイスを介してコルーチンのブロック内で使用できる[coroutineContext][CoroutineScope.coroutineContext]プロパティは、この特定のコルーチンのコンテキストへの参照です。
 このようにして、親コンテキストを継承することができます。
-特に、[runBlocking]のデフォルトコンテキストは呼び出し側スレッドに限定されているため、継承すると予測可能なFIFOスケジューリングを使用してこのスレッドに実行を限定するという効果があります。
+特に、[runBlocking]コルーチンのデフォルトディスパッチャーは呼び出し側スレッドに限定されているため、継承すると予測可能なFIFOスケジューリングを使用してこのスレッドに実行を限定するという効果があります。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val jobs = arrayListOf<Job>()
     jobs += launch(Unconfined) { // 制約なし -- メインスレッドで動作する
-        println(" 'Unconfined': I'm working in thread ${Thread.currentThread().name}")
+        println("      'Unconfined': I'm working in thread ${Thread.currentThread().name}")
         delay(500)
-        println(" 'Unconfined': After delay in thread ${Thread.currentThread().name}")
+        println("      'Unconfined': After delay in thread ${Thread.currentThread().name}")
     }
-    jobs += launch(context) { // 親(runBlockingコルーチン)のコンテキスト
-        println("    'context': I'm working in thread ${Thread.currentThread().name}")
+    jobs += launch(coroutineContext) { // 親(runBlockingコルーチン)のコンテキスト
+        println("'coroutineContext': I'm working in thread ${Thread.currentThread().name}")
         delay(1000)
-        println("    'context': After delay in thread ${Thread.currentThread().name}")
+        println("'coroutineContext': After delay in thread ${Thread.currentThread().name}")
     }
     jobs.forEach { it.join() }
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-02.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-context-02.kt)で完全なコードを取得できます
 
 次のように出力します。
  
 ```text
- 'Unconfined': I'm working in thread main
-    'context': I'm working in thread main
- 'Unconfined': After delay in thread kotlinx.coroutines.ScheduledExecutor
-    'context': After delay in thread main
+      'Unconfined': I'm working in thread main
+'coroutineContext': I'm working in thread main
+      'Unconfined': After delay in thread kotlinx.coroutines.DefaultExecutor
+'coroutineContext': After delay in thread main
 ```
 
 <!--- TEST LINES_START -->
  
-このように、 `runBlocking {...}` コルーチンの `context` を継承したコルーチンは `main` スレッドで実行し続けますが、制約なしのほうはスレッドは[delay]関数が使用しているスケジューラスレッドで再開しました。
+このように、 `runBlocking {...}` コルーチンの `coroutineContext` を継承したコルーチンは `main` スレッドで実行し続けますが、制約なしのほうはスレッドは[delay]関数が使用しているデフォルトエグゼキューターのスレッドで再開しました。
 
 ### コルーチンとスレッドのデバッグ
 
-コルーチンは、[Unconfined]ディスパッチャまたは[CommonPool]のようなマルチスレッドディスパッチャを使用して、あるスレッドで中断し、別のスレッドで再開できます。
+コルーチンは、[Unconfined]ディスパッチャまたはデフォルトのマルチスレッドディスパッチャを使用して、あるスレッドで中断し、別のスレッドで再開できます。
 シングルスレッドのディスパッチャであっても、コルーチンが何を、いつ、どこでやっていたのか把握するのは難しいかもしれません。
 スレッドを使用してアプリケーションをデバッグする一般的な方法は、ログファイルの各ログステートメントにスレッド名を出力することです。
 この機能は、ロギングフレームワークによって普遍的にサポートされています。 コルーチンを使用する場合、スレッド名だけではコンテキストの多くが得られないので、 `kotlinx.coroutines`にはデバッグ機能が組み込まれています。
@@ -808,11 +842,11 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")
 
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val a = async(context) {
+    val a = async(coroutineContext) {
         log("I'm computing a piece of the answer")
         6
     }
-    val b = async(context) {
+    val b = async(coroutineContext) {
         log("I'm computing another piece of the answer")
         7
     }
@@ -820,7 +854,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-03.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-context-03.kt)で完全なコードを取得できます
 
 `runBlocking` のメインコルーチン（#1）と、遅延値を計算する2つのコルーチン `a` （#2）と、`b` （#3）の3つのコルーチンがあります。
 これらはすべて `runBlocking` のコンテキストで実行されており、メインスレッドに限定されています。
@@ -832,7 +866,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 [main @coroutine#1] The answer is 42
 ```
 
-<!--- TEST -->
+<!--- TEST FLEXIBLE_THREAD -->
 
 `log` 関数はスレッドの名前を角括弧でプリントし、`main` スレッドであることがわかりますが、現在実行中のコルーチンの識別子が追加されています。
 この識別子は、デバッグモードがオンのときに、作成されたすべてのコルーチンに連続して割り当てられます。
@@ -847,21 +881,23 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")
 
 fun main(args: Array<String>) {
-    val ctx1 = newSingleThreadContext("Ctx1")
-    val ctx2 = newSingleThreadContext("Ctx2")
-    runBlocking(ctx1) {
-        log("Started in ctx1")
-        run(ctx2) {
-            log("Working in ctx2")
+    newSingleThreadContext("Ctx1").use { ctx1 ->
+        newSingleThreadContext("Ctx2").use { ctx2 ->
+            runBlocking(ctx1) {
+                log("Started in ctx1")
+                run(ctx2) {
+                    log("Working in ctx2")
+                }
+                log("Back to ctx1")
+            }
         }
-        log("Back to ctx1")
     }
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-04.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-context-04.kt)で完全なコードを取得できます
 
-これは2つの新しいテクニックを実証しています。
+これはいくつかの新しいテクニックを実証しています。
 1つは明示的に指定されたコンテキストで[runBlocking]を使用し、もう1つは[run]関数を使用してコルーチンのコンテキストを変更しながら、同じコルーチンにとどまることが以下の出力でわかります。
 
 ```text
@@ -872,46 +908,48 @@ fun main(args: Array<String>) {
 
 <!--- TEST -->
 
+この例では、Kotlin標準ライブラリの `use` 関数を使ってもう必要でなくなったときに[newSingleThreadContext]で作成されたスレッドを解放していることに注目してください。
+
 ### コンテキストにおけるジョブ
 
 コルーチンの[Job]はそのコンテキストの一部です。
-コルーチンは `context[Job]` 式を使ってそれ自身のコンテキストから取り出すことができます。
+コルーチンは `coroutineContext[Job]` 式を使ってそれ自身のコンテキストから取り出すことができます。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    println("My job is ${context[Job]}")
+    println("My job is ${coroutineContext[Job]}")
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-05.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-context-05.kt)で完全なコードを取得できます
 
-これは次のようなものを生成します
+[デバッグモード](#コルーチンとスレッドのデバッグ)で実行すると、次のようなものが生成されます。
 
 ```
-My job is BlockingCoroutine{Active}@65ae6ba4
+My job is "coroutine#1":BlockingCoroutine{Active}@6d311334
 ```
 
-<!--- TEST lines.size == 1 && lines[0].startsWith("My job is BlockingCoroutine{Active}@") -->
+<!--- TEST lines.size == 1 && lines[0].startsWith("My job is \"coroutine#1\":BlockingCoroutine{Active}@") -->
 
-[CoroutineScope]の[isActive][CoroutineScope.isActive]は `context[Job]!!.isActive` の便利なショートカットです。
+[CoroutineScope]の[isActive][CoroutineScope.isActive]は `coroutineContext[Job]!!.isActive` の便利なショートカットです。
 
 ### コルーチンの子
 
-コルーチンの[context][CoroutineScope.context]を使用して別のコルーチンを起動すると、新しいコルーチンの[Job]は親コルーチンのジョブの _子_ になります。
+コルーチンの[coroutineContext][CoroutineScope.coroutineContext]を使用して別のコルーチンを起動すると、新しいコルーチンの[Job]は親コルーチンのジョブの _子_ になります。
 親コルーチンがキャンセルされると、すべての子が再帰的にキャンセルされます。
   
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    // 何らかのリクエストを処理するためにコルーチンを開始する
+    // 何らかのリクエストを処理するためにコルーチンを起動する
     val request = launch(CommonPool) {
         // 他の2つのジョブが生成される。1つは別のコンテキスト
-        val job1 = launch(CommonPool) {
+        val job1 = launch {
             println("job1: I have my own context and execute independently!")
             delay(1000)
             println("job1: I am not affected by cancellation of the request")
         }
         // もう一方は親コンテキストを継承する
-        val job2 = launch(context) {
+        val job2 = launch(coroutineContext) {
             println("job2: I am a child of the request coroutine")
             delay(1000)
             println("job2: I will not execute this line if my parent request is cancelled")
@@ -927,7 +965,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-06.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-context-06.kt)で完全なコードを取得できます
 
 このコードの出力は以下の通りです。
 
@@ -949,9 +987,9 @@ main: Who has survived request cancellation?
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     // 何らかのリクエストを処理するためにコルーチンを開始する
-    val request = launch(context) { // `runBlocking` のコンテキストを使う
+    val request = launch(coroutineContext) { // `runBlocking` のコンテキストを使う
         // CommonPoolでCPU集約型の子ジョブを生成する !!!
-        val job = launch(context + CommonPool) {
+        val job = launch(coroutineContext + CommonPool) {
             println("job: I am a child of the request coroutine, but with a different dispatcher")
             delay(1000)
             println("job: I will not execute this line if my parent request is cancelled")
@@ -965,7 +1003,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-07.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-context-07.kt)で完全なコードを取得できます
 
 このコードの予想される結果は次のとおりです。
 
@@ -976,12 +1014,48 @@ main: Who has survived request cancellation?
 
 <!--- TEST -->
 
+### 親の責任
+
+親コルーチンは常にすべての子の完了を待ちます。
+親は起動するすべての子を明示的に追跡する必要はなく、これらを待つために最後に[Job.join]を使用する必要はありません。
+
+```kotlin
+fun main(args: Array<String>) = runBlocking<Unit> {
+    // 要求を処理するためにコルーチンを起動する
+    val request = launch {
+        repeat(3) { i -> // 小数の子ジョブを起動する
+            launch(coroutineContext)  {
+                delay((i + 1) * 200L) // 可変の遅延 200ms, 400ms, 600ms
+                println("Coroutine $i is done")
+            }
+        }
+        println("request: I'm done and I don't explicitly join my children that are still active")
+    }
+    request.join() // すべての子を含む要求の完了を待つ
+    println("Now processing of the request is complete")
+}
+```
+
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-context-08.kt)で完全なコードを取得できます
+
+結果は次のようになります。
+
+```text
+request: I'm done and I don't explicitly join my children that are still active
+Coroutine 0 is done
+Coroutine 1 is done
+Coroutine 2 is done
+Now processing of the request is complete
+```
+
+<!--- TEST -->
+
 ### デバッグのためのコルーチンの命名
 
 コルーチンが頻繁にログを記録し、同じコルーチンからのログレコードを相関させるだけでよい場合は、自動的に割り当てられたIDが有効です。
 しかし、コルーチンが特定の要求の処理や特定のバックグラウンドタスクの処理に縛られている場合は、デバッグの目的で明示的に名前を付ける方がよいでしょう。
-[CoroutineName]はスレッド名と同じ機能を果たします。
-これは、デバッグが有効になっているときにこのコルーチンを実行しているスレッド名に表示されます。
+[CoroutineName]コンテキスト要素はスレッド名と同じ機能を果たします。
+これは、[デバッグモード](#コルーチンとスレッドのデバッグ)が有効になっているときにこのコルーチンを実行しているスレッド名に表示されます。
 
 次の例は、この概念を示しています。
 
@@ -991,21 +1065,21 @@ fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")
 fun main(args: Array<String>) = runBlocking(CoroutineName("main")) {
     log("Started main coroutine")
     // 2つのバックグラウンド値の計算を実行する
-    val v1 = async(CommonPool + CoroutineName("v1coroutine")) {
-        log("Computing v1")
+    val v1 = async(CoroutineName("v1coroutine")) {
         delay(500)
+        log("Computing v1")
         252
     }
-    val v2 = async(CommonPool + CoroutineName("v2coroutine")) {
-        log("Computing v2")
+    val v2 = async(CoroutineName("v2coroutine")) {
         delay(1000)
+        log("Computing v2")
         6
     }
     log("The answer for v1 / v2 = ${v1.await() / v2.await()}")
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-08.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-context-09.kt)で完全なコードを取得できます
 
 `-Dkotlinx.coroutines.debug` JVMオプションで出力される結果は次のようになります。
  
@@ -1025,9 +1099,11 @@ fun main(args: Array<String>) = runBlocking(CoroutineName("main")) {
 たとえば、Androidアプリケーションを作成し、Androidアクティビティのコンテキストでさまざまなコルーチンを起動して、データのフェッチや更新、アニメーションなどの非同期操作を実行します。
 メモリリークを避けるためにアクティビティが破棄されると、これらのコルーチンはすべてキャンセルされなければなりません。
 
-アクティビティのライフサイクルに結びついた[ジョブ]のインスタンスを作成することで、コルーチンのライフサイクルを管理することができます。
-次の例に示すように、[Job()] [Job.invoke]ファクトリ関数を使用してジョブインスタンスが作成されます。
-すべてのコルーチンがコンテキスト内でこのジョブで開始されていることを確認してから、[Job.cancel]を1回呼び出すとすべて終了します。
+アクティビティのライフサイクルに結びついた[Job]のインスタンスを作成することで、コルーチンのライフサイクルを管理することができます。
+次の例に示すように、[Job()]ファクトリ関数を使用してジョブインスタンスを作成します。
+すべてのコルーチンがこのジョブのコンテキストで開始されていることを確認してから、[Job.cancel]を1回呼び出すとすべて終了します。
+
+さらに、[Job.join]でそれらのすべてが完了するのを待ちます。この例のように[cancelAndJoin]を使用することもできます。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
@@ -1035,20 +1111,19 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     // デモ用に10個のコルーチンを起動し、それぞれ別の時間に動作する
     val coroutines = List(10) { i ->
         // これらはすべてジョブオブジェクトの子
-        launch(context + job) { // メインrunBlockingスレッドのコンテキストを使用しますが、独自のジョブオブジェクトを使用します
-            delay(i * 200L) // 可変の遅延 0ms, 200ms, 400ms, ... など
+        launch(coroutineContext + job) { // メインrunBlockingスレッドのコンテキストを使用しますが、独自のジョブオブジェクトを使用します
+            delay((i + 1) * 200L) // 可変の遅延 200ms, 400ms, ... など
             println("Coroutine $i is done")
         }
     }
     println("Launched ${coroutines.size} coroutines")
     delay(500L) // 0.5秒遅延する
-    println("Cancelling job!")
-    job.cancel() // ジョブをキャンセル.. !!!
-    delay(1000L) // コルーチンがまだ動作中かどうかを確かめるためにさらに遅延する
+    println("Cancelling the job!")
+    job.cancelAndJoin() // すべてのコルーチンをキャンセルしてすべての完了を待つ
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-context-09.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-context-10.kt)で完全なコードを取得できます
 
 この例の出力は次の通り
 
@@ -1056,14 +1131,14 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 Launched 10 coroutines
 Coroutine 0 is done
 Coroutine 1 is done
-Coroutine 2 is done
-Cancelling job!
+Cancelling the job!
 ```
 
 <!--- TEST -->
 
-ご覧のように、最初の3つのコルーチンだけがメッセージを出力し、他は `job.cancel()` の1回の呼び出しでキャンセルされました。
+ご覧のように、最初の3つのコルーチンだけがメッセージを出力し、他は `job.cancelAndJoin()` の1回の呼び出しでキャンセルされました。
 したがって、私たちが仮定しているAndroidアプリケーションでは、アクティビティが作成されたときに親ジョブオブジェクトを作成し、それを子コルーチンに使用し、アクティビティが破棄されたときにキャンセルするだけです。
+Androidのライフサイクルの場合は同期的なので `join` できませんが、このジョイン機能は有界のリソースの使用を保証するバックエンドサービスを構築する際に便利です。
 
 ## チャネル
 
@@ -1081,7 +1156,7 @@ import kotlinx.coroutines.experimental.channels.*
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val channel = Channel<Int>()
-    launch(CommonPool) {
+    launch {
         // これはCPU使用量が多い計算や非同期ロジックかもしれないが、ここではただ5つの平方を送るだけ
         for (x in 1..5) channel.send(x * x)
     }
@@ -1091,7 +1166,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-01.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-01.kt)で完全なコードを取得できます
 
 このコードの出力は以下の通りです。
 
@@ -1117,7 +1192,7 @@ Done!
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val channel = Channel<Int>()
-    launch(CommonPool) {
+    launch {
         for (x in 1..5) channel.send(x * x)
         channel.close() // 送信完了
     }
@@ -1127,7 +1202,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-02.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-02.kt)で完全なコードを取得できます
 
 <!--- TEST 
 1
@@ -1144,10 +1219,10 @@ Done!
 これは _プロデューサー - コンシューマー_ パターンの一部であり、コンカレントコードでよく見られます。
 そのようなプロデューサーを、パラメータとしてchannelをとる関数に抽象化することはできますが、結果は関数から返さなければならないという常識とは逆になります。
 
-プロデューサ側で簡単に行うことを容易にする[produce]という便利なコルーチンビルダーと、コンシューマ側の `for` ループを置き換えることができる拡張関数[consumeEach]があります。
+プロデューサ側で簡単に行うことを容易にする[produce]という便利なコルーチンビルダーと、コンシューマ側の `for` ループを置き換える拡張関数[consumeEach]があります。
 
 ```kotlin
-fun produceSquares() = produce<Int>(CommonPool) {
+fun produceSquares() = produce<Int> {
     for (x in 1..5) send(x * x)
 }
 
@@ -1158,7 +1233,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-03.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-03.kt)で完全なコードを取得できます
 
 <!--- TEST 
 1
@@ -1174,7 +1249,7 @@ Done!
 パイプラインは、1つのコルーチンが無限の値のストリームを生成しているパターンです。
 
 ```kotlin
-fun produceNumbers() = produce<Int>(CommonPool) {
+fun produceNumbers() = produce<Int> {
     var x = 1
     while (true) send(x++) // 1から始まる整数の無限ストリーム
 }
@@ -1184,7 +1259,7 @@ fun produceNumbers() = produce<Int>(CommonPool) {
 以下の例では、数値は単に二乗されます。
 
 ```kotlin
-fun square(numbers: ReceiveChannel<Int>) = produce<Int>(CommonPool) {
+fun square(numbers: ReceiveChannel<Int>) = produce<Int> {
     for (x in numbers) send(x * x)
 }
 ```
@@ -1202,7 +1277,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-04.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-04.kt)で完全なコードを取得できます
 
 <!--- TEST 
 1
@@ -1214,20 +1289,20 @@ Done!
 -->
 
 [コルーチンはデーモンスレッドに似ている](#コルーチンはデーモンスレッドに似ている)ため、このサンプルアプリケーションではこれらのコルーチンをキャンセルする必要はありませんが、より大きなアプリケーションではパイプラインが必要なくなった場合に停止する必要があります。
-あるいは、パイプラインコルーチンを[コルーチンの子](#コルーチンの子)として実行することもできます。
+あるいは、次の例に示すように、パイプラインコルーチンを[メインコルーチンの子](#コルーチンの子)として実行することもできます。
 
 ### パイプラインによる素数
 
-コルーチンのパイプラインを使って素数を生成する例を使って、パイプラインを徹底的に見てみましょう。無限の数列から始めます。今回は明示的なコンテキストパラメータを導入して、呼び出し元がコルーチンの実行を制御できるようにします。
+コルーチンのパイプラインを使って素数を生成する例を使って、パイプラインを徹底的に見てみましょう。無限の数列から始めます。今回は明示的な `context` パラメーターを導入し[produce]ビルダーに渡して、呼び出し元がコルーチンの実行を制御できるようにします。
  
-<!--- INCLUDE kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-05.kt  
+<!--- INCLUDE core/kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-05.kt  
 import kotlin.coroutines.experimental.CoroutineContext
 -->
  
 ```kotlin
 fun numbersFrom(context: CoroutineContext, start: Int) = produce<Int>(context) {
     var x = start
-    while (true) send(x++) // infinite stream of integers from start
+    while (true) send(x++) // startからの無限の整数ストリーム
 }
 ```
 
@@ -1246,19 +1321,22 @@ numbersFrom(2) -> filter(2) -> filter(3) -> filter(5) -> filter(7) ...
 ``` 
  
 次の例では最初の10個の素数を出力し、パイプライン全体をメインスレッドのコンテキストで実行します。
+すべてのコルーチンは[coroutineContext][CoroutineScope.coroutineContext]でメイン[runBlocking]コルーチンの子として起動されるため、開始したすべてのコルーチンの明示的なリストを保持する必要はありません。
+[cancelChildren]拡張関数を使用して、すべての子コルーチンをキャンセルします。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    var cur = numbersFrom(context, 2)
+    var cur = numbersFrom(coroutineContext, 2)
     for (i in 1..10) {
         val prime = cur.receive()
         println(prime)
-        cur = filter(context, cur, prime)
+        cur = filter(coroutineContext, cur, prime)
     }
+    coroutineContext.cancelChildren() // すべての子をキャンセルしてメインを終わる
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-05.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-05.kt)で完全なコードを取得できます
 
 このコードの出力です。
 
@@ -1277,11 +1355,12 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 <!--- TEST -->
 
-標準ライブラリの `buildIterator` コルーチンビルダーを使って同じパイプラインを構築できることに留意してください。
+標準ライブラリの [`buildIterator`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines.experimental/build-iterator.html) コルーチンビルダーを使って同じパイプラインを構築できることに留意してください。
 `produce` を `buildIterator`、 `send` を `yield`、 `receive` を `next`、 `ReceiveChannel` を `Iterator` で置き換え、コンテキストを取り除きます。 `runBlocking` も必要ありません。
 ただし、上記のようなチャネルを使用するパイプラインの利点は、[CommonPool]コンテキストで実行すると実際に複数のCPUコアを使用できることです。
 
-とにかく、これは素数を見つけるには非常に非実用的な方法です。 実際にはパイプラインは（リモートサービスへの非同期呼び出しのような）いくつかの他のサスペンド呼び出しを必要とします。これらのパイプラインは完全に非同期の `produce` とは異なり任意の中断を許さないため、`buildSeqeunce` / `buildIterator` を使用して構築することはできません。
+どのみち、これは素数を見つけるには非常に非実用的な方法です。 
+実際にはパイプラインは（リモートサービスへの非同期呼び出しのような）いくつかの他のサスペンド呼び出しを必要とします。これらのパイプラインは `buildSeqeunce`/`buildIterator` を使用して構築することはできません 。なぜなら完全に非同期の `produce` とは異なり任意の中断を許さないためです。
  
 ### 論理出力数
 
@@ -1289,7 +1368,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 定期的に整数（毎秒10個の数値）を生成するプロデューサーコルーチンから始めましょう。
 
 ```kotlin
-fun produceNumbers() = produce<Int>(CommonPool) {
+fun produceNumbers() = produce<Int> {
     var x = 1 // 1から始める
     while (true) {
         send(x++) // 次を生成
@@ -1301,25 +1380,25 @@ fun produceNumbers() = produce<Int>(CommonPool) {
 いくつかのプロセッサコルーチンを持つことができます。この例では、IDと受け取った数値をプリントします。
 
 ```kotlin
-fun launchProcessor(id: Int, channel: ReceiveChannel<Int>) = launch(CommonPool) {
+fun launchProcessor(id: Int, channel: ReceiveChannel<Int>) = launch {
     channel.consumeEach {
         println("Processor #$id received $it")
     }    
 }
 ```
 
-今度は5つのプロセッサを起動して、1秒間動作させましょう。何が起こるか確かめてください。
+今度は5つのプロセッサを起動して、それらを約1秒間動作させましょう。何が起こるか確かめてください。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val producer = produceNumbers()
     repeat(5) { launchProcessor(it, producer) }
-    delay(1000)
-    producer.cancel() // cancel producer coroutine and thus kill them all
+    delay(950)
+    producer.cancel() // プロデューサーのコルーチンを取り消し、すべてを殺す
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-06.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-06.kt)で完全なコードを取得できます
 
 プロセッサIDとして受け取るそれぞれの固有の整数は異なる可能性がありますが、出力は次のようになります。
 
@@ -1354,20 +1433,21 @@ suspend fun sendString(channel: SendChannel<String>, s: String, time: Long) {
 }
 ```
 
-さて、文字列を送信するコルーチンをいくつか起動するとどうなるか見てみましょう（この例ではメインスレッドのコンテキストで起動します）。
+さて、文字列を送信するコルーチンをいくつか起動するとどうなるか見てみましょう（この例ではメインスレッドのコンテキストでメインコルーチンの子として起動します）。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val channel = Channel<String>()
-    launch(context) { sendString(channel, "foo", 200L) }
-    launch(context) { sendString(channel, "BAR!", 500L) }
-    repeat(6) { // receive first six
+    launch(coroutineContext) { sendString(channel, "foo", 200L) }
+    launch(coroutineContext) { sendString(channel, "BAR!", 500L) }
+    repeat(6) { // 最初の6個を受け取る
         println(channel.receive())
     }
+    coroutineContext.cancelChildren() // すべての子をキャンセルしてメインを終わる
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-07.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-07.kt)で完全なコードを取得できます
 
 出力は、
 
@@ -1386,14 +1466,14 @@ BAR!
 
 今までに示されたチャネルにはバッファーがありませんでした。 バッファーされていないチャネルは、送信側と受信側がお互いに出会ったときに要素を転送します（別名ランデブー）。 sendが最初に呼び出された場合、receiveが呼び出されるまで中断されます。receiveが最初に呼び出された場合、sendが呼び出されるまで中断されます。
 
-[Channel()] [Channel.invoke]ファクトリ関数と[produce]ビルダーは、_バッファーサイズ_ を指定するためのオプションの `capacity` パラメータをとります。 バッファーは、指定された容量を持つ `BlockingQueue` と同様に、送信側が中断する前に複数の要素を送信できるようにします。これはバッファーがいっぱいになるとブロックします。
+[Channel()]ファクトリ関数と[produce]ビルダーは、_バッファーサイズ_ を指定するためのオプションの `capacity` パラメータをとります。 バッファーは、指定された容量を持つ `BlockingQueue` と同様に、送信側が中断する前に複数の要素を送信できるようにします。これはバッファーがいっぱいになるとブロックします。
 
 次のコードの動作を見てみましょう。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val channel = Channel<Int>(4) // バッファーされたチャネルを作る
-    launch(context) { // 送信側コルーチンを起動
+    val sender = launch(coroutineContext) { // 送信側コルーチンを起動
         repeat(10) {
             println("Sending $it") // 各要素を送信する前にプリント
             channel.send(it) // バッファーがいっぱいになったら中断する
@@ -1401,10 +1481,11 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     }
     // 何も受け取らずに待つ...
     delay(1000)
+    sender.cancel() // 送信者コルーチンをキャンセルする
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-08.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-08.kt)で完全なコードを取得できます
 
 これは容量 _4_ のバッファーされたチャネルを使って _5_ 回 "sending"を表示します。
 
@@ -1432,11 +1513,11 @@ data class Ball(var hits: Int)
 
 fun main(args: Array<String>) = runBlocking<Unit> {
     val table = Channel<Ball>() // 共有テーブル
-    launch(context) { player("ping", table) }
-    launch(context) { player("pong", table) }
+    launch(coroutineContext) { player("ping", table) }
+    launch(coroutineContext) { player("pong", table) }
     table.send(Ball(0)) // ボールを供給する
     delay(1000) // 1秒遅らせる
-    table.receive() // ゲームオーバー。ボールを掴む
+    coroutineContext.cancelChildren() // ゲームオーバー。これらをキャンセルする
 }
 
 suspend fun player(name: String, table: Channel<Ball>) {
@@ -1449,7 +1530,7 @@ suspend fun player(name: String, table: Channel<Ball>) {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-09.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-channel-09.kt)で完全なコードを取得できます
 
 "ping"コルーチンが最初に開始されるので、ボールを受け取るのは最初のコルーチンです。 "ping"コルーチンは、ボールをテーブルに戻した後すぐに再びボールを受け取るようになっていますが、ボールは既に受信を待っていた"pong"コルーチンによって受信さます。
 
@@ -1458,14 +1539,16 @@ ping Ball(hits=1)
 pong Ball(hits=2)
 ping Ball(hits=3)
 pong Ball(hits=4)
-ping Ball(hits=5)
 ```
 
 <!--- TEST -->
 
+チャネルによっては、使用されているエグゼキューターの性質上不公平に見える実行が生成されることがあります。
+詳細については、[この問題](https://github.com/Kotlin/kotlinx.coroutines/issues/111)を参照してください。
+
 ## 共有ミュータブルステートと並行性
 
-コルーチンは、[CommonPool]のようなマルチスレッドディスパッチャを使用して同時に実行できます。 これは、すべての通常の並行性の問題を提起します。
+コルーチンは、デフォルトの[CommonPool]のようなマルチスレッドディスパッチャを使用して同時に実行できます。 これは、すべての通常の並行性の問題を提起します。
 主な問題は、**共有ミュータブルステート**へのアクセスの同期です。
 コルーチンの世界でのこの問題に対するいくつかの解決策は、マルチスレッドの世界の解決策と似ていますが、他は独自のものです。
 
@@ -1485,6 +1568,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 <!--- INCLUDE .*/example-sync-06.kt
 import kotlinx.coroutines.experimental.sync.Mutex
+import kotlinx.coroutines.experimental.sync.withLock
 -->
 
 <!--- INCLUDE .*/example-sync-07.kt
@@ -1522,7 +1606,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-01.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-01.kt)で完全なコードを取得できます
 
 <!--- TEST LINES_START
 Completed 1000000 actions in
@@ -1545,7 +1629,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-01b.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-01b.kt)で完全なコードを取得できます
 
 <!--- TEST LINES_START
 Completed 1000000 actions in
@@ -1568,7 +1652,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-02.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-02.kt)で完全なコードを取得できます
 
 <!--- TEST LINES_START
 Completed 1000000 actions in
@@ -1593,7 +1677,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-03.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-03.kt)で完全なコードを取得できます
 
 <!--- TEST ARBITRARY_TIME
 Completed 1000000 actions in xxx ms
@@ -1621,7 +1705,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-04.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-04.kt)で完全なコードを取得できます
 
 <!--- TEST ARBITRARY_TIME
 Completed 1000000 actions in xxx ms
@@ -1648,7 +1732,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-05.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-05.kt)で完全なコードを取得できます
 
 <!--- TEST ARBITRARY_TIME
 Completed 1000000 actions in xxx ms
@@ -1666,21 +1750,23 @@ Counter = 1000000
 主な違いは、 `Mutex.lock` はサスペンド関数であることです。
 これはスレッドをブロックしません。
 
+`mutex.lock(); try { ... } finally { mutex.unlock() }` パターンを表す便利な[withLock]拡張関数もあります。
+
 ```kotlin
 val mutex = Mutex()
 var counter = 0
 
 fun main(args: Array<String>) = runBlocking<Unit> {
     massiveRun(CommonPool) {
-        mutex.lock()
-        try { counter++ }
-        finally { mutex.unlock() }
+        mutex.withLock {
+            counter++        
+        }
     }
     println("Counter = $counter")
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-06.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-06.kt)で完全なコードを取得できます
 
 <!--- TEST ARBITRARY_TIME
 Completed 1000000 actions in xxx ms
@@ -1698,36 +1784,51 @@ Counter = 1000000
 [actor]コルーチンビルダーがアクターのメールボックスチャネルをメッセージを受信するスコープに結合し、
 結果のジョブオブジェクトに送信チャネルを結合するので、アクターへの単一の参照をそのハンドルとして持ち運ぶことができます。
 
+アクターを使用する最初のステップは、アクターが処理するメッセージのクラスを定義することです。
+
+Kotlinの[シールドクラス](https://kotlinlang.org/docs/reference/sealed-classes.html)はその目的に適しています。
+カウンタをインクリメントする `IncCounter` メッセージと、その値を取得する `GetCounter` メッセージを持つ `CounterMsg` シールドクラスを定義します。
+後で応答を送信する必要があります。 将来知られる（通信される）単一の値を表す[CompletableDeferred]通信プリミティブは、その目的のためにここで使用されます。
+
 ```kotlin
 // counterActorのメッセージ型
 sealed class CounterMsg
 object IncCounter : CounterMsg() // カウンターをインクリメントする一方向のメッセージ
-class GetCounter(val response: SendChannel<Int>) : CounterMsg() // 返信を持ったリクエスト
+class GetCounter(val response: CompletableDeferred<Int>) : CounterMsg() // 返信を持ったリクエスト
+```
 
+次に、[actor]コルーチンビルダーを使用してアクターを起動する関数を定義します。
+
+```kotlin
 // この関数は、新しいカウンタアクタを起動する
-fun counterActor() = actor<CounterMsg>(CommonPool) {
+fun counterActor() = actor<CounterMsg> {
     var counter = 0 // アクターの状態
     for (msg in channel) { // 受信メッセージを反復処理する
         when (msg) {
             is IncCounter -> counter++
-            is GetCounter -> msg.response.send(counter)
+            is GetCounter -> msg.response.complete(counter)
         }
     }
 }
+```
 
+メインコードは簡単です。
+
+```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val counter = counterActor() // アクターを作る
     massiveRun(CommonPool) {
         counter.send(IncCounter)
     }
-    val response = Channel<Int>()
+    // アクターからカウンター値を得るためのメッセージを送る
+    val response = CompletableDeferred<Int>()
     counter.send(GetCounter(response))
-    println("Counter = ${response.receive()}")
+    println("Counter = ${response.await()}")
     counter.close() // アクターを終了する
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-07.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-sync-07.kt)で完全なコードを取得できます
 
 <!--- TEST ARBITRARY_TIME
 Completed 1000000 actions in xxx ms
@@ -1780,7 +1881,7 @@ fun buzz(context: CoroutineContext) = produce<String>(context) {
 ```
 
 [receive][ReceiveChannel.receive]サスペンド関数を使用すると、一方のチャネルから _または_ 他方のチャネルから受信することができます。
-しかし、[select]式は、[onReceive][SelectBuilder.onReceive]節を使って _両方_ から同時に受け取ることができます。
+しかし、[select]式は、[onReceive][ReceiveChannel.onReceive]節を使って _両方_ から同時に受け取ることができます。
 
 ```kotlin
 suspend fun selectFizzBuzz(fizz: ReceiveChannel<String>, buzz: ReceiveChannel<String>) {
@@ -1799,15 +1900,16 @@ suspend fun selectFizzBuzz(fizz: ReceiveChannel<String>, buzz: ReceiveChannel<St
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val fizz = fizz(context)
-    val buzz = buzz(context)
+    val fizz = fizz(coroutineContext)
+    val buzz = buzz(coroutineContext)
     repeat(7) {
         selectFizzBuzz(fizz, buzz)
     }
+    coroutineContext.cancelChildren() // cancel fizz & buzz coroutines    
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-01.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-select-01.kt)で完全なコードを取得できます
 
 このコードの結果は次のとおりです。
 
@@ -1825,8 +1927,8 @@ buzz -> 'Buzz!'
 
 ### クローズ時の選択
 
-チャネルが閉じられ、対応する `select` が例外をスローすると、 `select` の[onReceive][SelectBuilder.onReceive]節は失敗します。
-[onReceiveOrNull][SelectBuilder.onReceiveOrNull]節を使用して、チャネルが閉じられたときに特定のアクションを実行できます。
+チャネルが閉じられ、対応する `select` が例外をスローすると、 `select` の[onReceive][ReceiveChannel.onReceive]節は失敗します。
+[onReceiveOrNull][ReceiveChannel.onReceiveOrNull]節を使用して、チャネルが閉じられたときに特定のアクションを実行できます。
 次の例は、 `select` が選択された節の結果を返す式であることも示しています。
 
 ```kotlin
@@ -1852,19 +1954,20 @@ suspend fun selectAorB(a: ReceiveChannel<String>, b: ReceiveChannel<String>): St
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     // この例ではメインスレッドのコンテキストを予測可能性のために使用する...
-    val a = produce<String>(context) { 
+    val a = produce<String>(coroutineContext) { 
         repeat(4) { send("Hello $it") }
     }
-    val b = produce<String>(context) { 
+    val b = produce<String>(coroutineContext) {
         repeat(4) { send("World $it") }
     }
     repeat(8) { // 最初の8個の結果をプリントする
         println(selectAorB(a, b))
     }
+    coroutineContext.cancelChildren()    
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-02.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-select-02.kt)で完全なコードを取得できます
 
 このコードの結果は非常に興味深いので、それをモードの詳細で分析します。
 
@@ -1888,16 +1991,20 @@ Channel 'a' is closed
 ここでは、両方のチャネルが常に文字列を生成しているので、チャネル `a` はselectの最初の節であり、勝ちます。
 しかし、バッファされていないチャネルを使用しているので、 `a` は[send][SendChannel.send]呼び出しで時々中断し、 `b` にも送信する機会を与えます。
 
-2番目の所見は、[onReceiveOrNull][SelectBuilder.onReceiveOrNull]は、チャネルが既に閉じられているときに直ちに選択されることです。
+2番目の所見は、[onReceiveOrNull][ReceiveChannel.onReceiveOrNull]は、チャネルが既に閉じられているときに直ちに選択されることです。
 
 ### 送信の選択
 
-Select式には、[onSend][SelectBuilder.onSend]節があり、選択のバイアスされた性質と組み合わせてとても有効に使用できます。
+Select式には、[onSend][SendChannel.onSend]節があり、選択のバイアスされた性質と組み合わせてとても有効に使用できます。
 
 プライマリチャネルのコンシューマーが送信に追いつかないときに、その値を `side` チャネルに送る整数のプロデューサーの例を書きましょう。
 
+<!--- INCLUDE
+import kotlin.coroutines.experimental.CoroutineContext
+-->
+
 ```kotlin
-fun produceNumbers(side: SendChannel<Int>) = produce<Int>(CommonPool) {
+fun produceNumbers(context: CoroutineContext, side: SendChannel<Int>) = produce<Int>(context) {
     for (num in 1..10) { // 1から10までの10個の数を生成する
         delay(100) // 100ミリ秒ごと
         select<Unit> {
@@ -1913,18 +2020,19 @@ fun produceNumbers(side: SendChannel<Int>) = produce<Int>(CommonPool) {
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val side = Channel<Int>() // サイドチャネルを割り当てる
-    launch(context) { // これはサイドチャネルの非常に高速なコンシューマー
+    launch(coroutineContext) { // これはサイドチャネルの非常に高速なコンシューマー
         side.consumeEach { println("Side channel has $it") }
     }
-    produceNumbers(side).consumeEach { 
+    produceNumbers(coroutineContext, side).consumeEach { 
         println("Consuming $it")
         delay(250) // 急がずに、消費した値をきっちり消化する
     }
     println("Done consuming")
+    coroutineContext.cancelChildren()    
 }
 ``` 
  
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-03.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-select-03.kt)で完全なコードを取得できます
   
 では、何が起こるか見てみましょう。
  
@@ -1946,7 +2054,7 @@ Done consuming
 
 ### 延期された値の選択
 
-遅延値は、[onAwait][SelectBuilder.onAwait]節を使用して選択できます。
+遅延値は、[onAwait][Deferred.onAwait]節を使用して選択できます。
 ランダム遅延の後に遅延文字列値を返す非同期関数から始めましょう。
 
 <!--- INCLUDE .*/example-select-04.kt
@@ -1954,7 +2062,7 @@ import java.util.*
 -->
 
 ```kotlin
-fun asyncString(time: Int) = async(CommonPool) {
+fun asyncString(time: Int) = async {
     delay(time.toLong())
     "Waited for $time ms"
 }
@@ -1989,7 +2097,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-04.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-select-04.kt)で完全なコードを取得できます
 
 出力は、
 
@@ -2003,10 +2111,10 @@ Deferred 4 produced answer 'Waited for 128 ms'
 ### 延期された値のチャネルの切り替え
 
 次の遅延値が来るかチャネルが閉じられるまで、遅延ストリング値のチャネルを消費し、受信した遅延値を待つチャネルプロデューサー関数を書きましょう。
-この例では、同じ `select` に[onReceiveOrNull][SelectBuilder.onReceiveOrNull]節と[onAwait] [SelectBuilder.onAwait]節を入れています。
+この例では、同じ `select` に[onReceiveOrNull][ReceiveChannel.onReceiveOrNull]節と[onAwait][Deferred.onAwait]節を入れています。
 
 ```kotlin
-fun switchMapDeferreds(input: ReceiveChannel<Deferred<String>>) = produce<String>(CommonPool) {
+fun switchMapDeferreds(input: ReceiveChannel<Deferred<String>>) = produce<String> {
     var current = input.receive() // 最初に受け取った遅延値から開始する
     while (isActive) { // キャンセルまたは閉じられない限りループする
         val next = select<Deferred<String>?> { // このselectから次の遅延値またはnullを返す
@@ -2031,7 +2139,7 @@ fun switchMapDeferreds(input: ReceiveChannel<Deferred<String>>) = produce<String
 これをテストするために、指定した時間後に指定された文字列に解決される単純な非同期関数を使用します。
 
 ```kotlin
-fun asyncString(str: String, time: Long) = async(CommonPool) {
+fun asyncString(str: String, time: Long) = async {
     delay(time)
     str
 }
@@ -2042,7 +2150,7 @@ fun asyncString(str: String, time: Long) = async(CommonPool) {
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val chan = Channel<Deferred<String>>() // テスト用のチャネル
-    launch(context) { // プリント用のコルーチンを起動する
+    launch(coroutineContext) { // プリント用のコルーチンを起動する
         for (s in switchMapDeferreds(chan)) 
             println(s) // 受信した文字列をプリントする
     }
@@ -2059,7 +2167,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-core/src/test/kotlin/guide/example-select-05.kt)で完全なコードを取得できます
+> [ここ](core/kotlinx-coroutines-core/src/test/kotlin/guide/example-select-05.kt)で完全なコードを取得できます
 
 このコードの結果は次の通りです。
 
@@ -2085,6 +2193,9 @@ Channel was closed
 [delay]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/delay.html
 [runBlocking]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/run-blocking.html
 [Job]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-job/index.html
+[cancelAndJoin]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/cancel-and-join.html
+[Job.cancel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-job/cancel.html
+[Job.join]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-job/join.html
 [CancellationException]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-cancellation-exception.html
 [yield]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/yield.html
 [CoroutineScope.isActive]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-scope/is-active.html
@@ -2092,23 +2203,30 @@ Channel was closed
 [run]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/run.html
 [NonCancellable]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-non-cancellable/index.html
 [withTimeout]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/with-timeout.html
+[withTimeoutOrNull]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/with-timeout-or-null.html
 [async]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/async.html
 [Deferred]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-deferred/index.html
 [CoroutineStart.LAZY]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-start/-l-a-z-y.html
 [Deferred.await]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-deferred/await.html
 [Job.start]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-job/start.html
-[CommonPool]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-common-pool/index.html
 [CoroutineDispatcher]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-dispatcher/index.html
-[CoroutineScope.context]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-scope/context.html
+[DefaultDispatcher]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-default-dispatcher.html
+[CommonPool]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-common-pool/index.html
+[CoroutineScope.coroutineContext]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-scope/coroutine-context.html
 [Unconfined]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-unconfined/index.html
+[newSingleThreadContext]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/new-single-thread-context.html
+[ThreadPoolDispatcher.close]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-thread-pool-dispatcher/close.html
 [newCoroutineContext]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/new-coroutine-context.html
 [CoroutineName]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-name/index.html
-[Job.invoke]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-job/invoke.html
-[Job.cancel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-job/cancel.html
+[Job()]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-job.html
+[cancelChildren]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/kotlin.coroutines.experimental.-coroutine-context/cancel-children.html
+[CompletableDeferred]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-completable-deferred/index.html
+[Deferred.onAwait]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-deferred/on-await.html
 <!--- INDEX kotlinx.coroutines.experimental.sync -->
 [Mutex]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.sync/-mutex/index.html
 [Mutex.lock]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.sync/-mutex/lock.html
 [Mutex.unlock]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.sync/-mutex/unlock.html
+[withLock]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.sync/with-lock.html
 <!--- INDEX kotlinx.coroutines.experimental.channels -->
 [Channel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-channel/index.html
 [SendChannel.send]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-send-channel/send.html
@@ -2116,12 +2234,11 @@ Channel was closed
 [SendChannel.close]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-send-channel/close.html
 [produce]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/produce.html
 [consumeEach]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/consume-each.html
-[Channel.invoke]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-channel/invoke.html
+[Channel()]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-channel.html
 [actor]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/actor.html
+[ReceiveChannel.onReceive]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-receive-channel/on-receive.html
+[ReceiveChannel.onReceiveOrNull]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-receive-channel/on-receive-or-null.html
+[SendChannel.onSend]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-send-channel/on-send.html
 <!--- INDEX kotlinx.coroutines.experimental.selects -->
 [select]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.selects/select.html
-[SelectBuilder.onReceive]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.selects/-select-builder/on-receive.html
-[SelectBuilder.onReceiveOrNull]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.selects/-select-builder/on-receive-or-null.html
-[SelectBuilder.onSend]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.selects/-select-builder/on-send.html
-[SelectBuilder.onAwait]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.selects/-select-builder/on-await.html
 <!--- END -->

@@ -24,11 +24,11 @@ import kotlin.coroutines.experimental.CoroutineContext
 import kotlinx.coroutines.experimental.selects.whileSelect
 
 fun <T, U> Publisher<T>.takeUntil(context: CoroutineContext, other: Publisher<U>) = publish<T>(context) {
-    this@takeUntil.open().use { thisChannel ->           // explicitly open channel to Publisher<T>
-        other.open().use { otherChannel ->               // explicitly open channel to Publisher<U>
+    this@takeUntil.openSubscription().use { thisChannel -> // explicitly open channel to Publisher<T>
+        other.openSubscription().use { otherChannel ->     // explicitly open channel to Publisher<U>
             whileSelect {
-                otherChannel.onReceive { false }         // bail out on any received element from `other`
-                thisChannel.onReceive { send(it); true } // resend element from this channel and continue
+                otherChannel.onReceive { false }          // bail out on any received element from `other`
+                thisChannel.onReceive { send(it); true }  // resend element from this channel and continue
             }
         }
     }
@@ -42,7 +42,7 @@ fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: 
 }
 
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val slowNums = rangeWithInterval(context, 200, 1, 10)         // numbers with 200ms interval
-    val stop = rangeWithInterval(context, 500, 1, 10)             // the first one after 500ms
-    slowNums.takeUntil(context, stop).consumeEach { println(it) } // let's test it
+    val slowNums = rangeWithInterval(coroutineContext, 200, 1, 10)         // numbers with 200ms interval
+    val stop = rangeWithInterval(coroutineContext, 500, 1, 10)             // the first one after 500ms
+    slowNums.takeUntil(coroutineContext, stop).consumeEach { println(it) } // let's test it
 }

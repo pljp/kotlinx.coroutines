@@ -22,6 +22,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.experimental.*
 import kotlin.coroutines.experimental.Continuation
+import kotlin.coroutines.experimental.ContinuationInterceptor
 import kotlin.coroutines.experimental.CoroutineContext
 
 /**
@@ -29,11 +30,12 @@ import kotlin.coroutines.experimental.CoroutineContext
  * This coroutine builder uses [CommonPool] context by default.
  *
  * The running coroutine is cancelled when the resulting future is cancelled or otherwise completed.
- * If the [context] for the new coroutine is omitted or is explicitly specified but does not include a
- * coroutine interceptor, then [CommonPool] is used.
- * See [CoroutineDispatcher] for other standard [context] implementations that are provided by `kotlinx.coroutines`.
+ *
+ * The [context] for the new coroutine can be explicitly specified.
+ * See [CoroutineDispatcher] for the standard context implementations that are provided by `kotlinx.coroutines`.
  * The [context][CoroutineScope.context] of the parent coroutine from its [scope][CoroutineScope] may be used,
  * in which case the [Job] of the resulting coroutine is a child of the job of the parent coroutine.
+ * If the context does not have any dispatcher nor any other [ContinuationInterceptor], then [DefaultDispatcher] is used.
  *
  * By default, the coroutine is immediately scheduled for execution.
  * Other options can be specified via `start` parameter. See [CoroutineStart] for details.
@@ -43,17 +45,17 @@ import kotlin.coroutines.experimental.CoroutineContext
  *
  * See [newCoroutineContext] for a description of debugging facilities that are available for newly created coroutine.
  *
- * @param context context of the coroutine
- * @param start coroutine start option
- * @param block the coroutine code
+ * @param context context of the coroutine. The default value is [DefaultDispatcher].
+ * @param start coroutine start option. The default value is [CoroutineStart.DEFAULT].
+ * @param block the coroutine code.
  */
 public fun <T> future(
-    context: CoroutineContext = CommonPool,
+    context: CoroutineContext = DefaultDispatcher,
     start: CoroutineStart = CoroutineStart.DEFAULT,
     block: suspend CoroutineScope.() -> T
 ): ListenableFuture<T> {
     require(!start.isLazy) { "$start start is not supported" }
-    val newContext = newCoroutineContext(CommonPool + context)
+    val newContext = newCoroutineContext(context)
     val job = Job(newContext[Job])
     val future = ListenableFutureCoroutine<T>(newContext + job)
     job.cancelFutureOnCompletion(future)
@@ -64,6 +66,7 @@ public fun <T> future(
 private class ListenableFutureCoroutine<T>(
     override val context: CoroutineContext
 ) : AbstractFuture<T>(), Continuation<T>, CoroutineScope {
+    override val coroutineContext: CoroutineContext get() = context
     override val isActive: Boolean get() = context[Job]!!.isActive
     override fun resume(value: T) { set(value) }
     override fun resumeWithException(exception: Throwable) { setException(exception) }
@@ -95,7 +98,7 @@ private class DeferredListenableFuture<T>(
  * Awaits for completion of the future without blocking a thread.
  *
  * This suspending function is cancellable.
- * If the [Job] of the current coroutine is completed while this suspending function is waiting, this function
+ * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
  * stops waiting for the future and immediately resumes with [CancellationException].
  *
  * Note, that `ListenableFuture` does not support removal of installed listeners, so on cancellation of this wait
@@ -114,6 +117,7 @@ public suspend fun <T> ListenableFuture<T>.await(): T = suspendCancellableCorout
 private class ContinuationCallback<T>(
     @Volatile @JvmField var cont: Continuation<T>?
 ) : FutureCallback<T> {
+    @Suppress("UNCHECKED_CAST")
     override fun onSuccess(result: T?) { cont?.resume(result as T) }
     override fun onFailure(t: Throwable) { cont?.resumeWithException(t) }
 }

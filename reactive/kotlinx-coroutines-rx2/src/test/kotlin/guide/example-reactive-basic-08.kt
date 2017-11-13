@@ -28,10 +28,11 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     subject.onNext("one")
     subject.onNext("two")
     // now launch a coroutine to print the most recent update
-    launch(context) { // use the context of the main thread for a coroutine
+    launch(coroutineContext) { // use the context of the main thread for a coroutine
         subject.consumeEach { println(it) }
     }
     subject.onNext("three")
     subject.onNext("four")
     yield() // yield the main thread to the launched coroutine <--- HERE
+    subject.onComplete() // now complete subject's sequence to cancel consumer, too    
 }

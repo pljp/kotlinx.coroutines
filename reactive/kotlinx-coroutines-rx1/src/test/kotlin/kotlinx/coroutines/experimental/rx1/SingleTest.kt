@@ -20,7 +20,9 @@ import kotlinx.coroutines.experimental.*
 import org.hamcrest.core.IsEqual
 import org.hamcrest.core.IsInstanceOf
 import org.hamcrest.core.IsNull
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThat
+import org.junit.Before
 import org.junit.Test
 import rx.Observable
 import rx.Single
@@ -30,10 +32,15 @@ import java.util.concurrent.TimeUnit
  * Tests emitting single item with [rxSingle].
  */
 class SingleTest : TestBase() {
+    @Before
+    fun setup() {
+        ignoreLostThreads("RxComputationScheduler-", "RxIoScheduler-")
+    }
+
     @Test
     fun testBasicSuccess() = runBlocking<Unit> {
         expect(1)
-        val single = rxSingle(context) {
+        val single = rxSingle(coroutineContext) {
             expect(4)
             "OK"
         }
@@ -50,7 +57,7 @@ class SingleTest : TestBase() {
     @Test
     fun testBasicFailure() = runBlocking<Unit> {
         expect(1)
-        val single = rxSingle(context) {
+        val single = rxSingle(coroutineContext) {
             expect(4)
             throw RuntimeException("OK")
         }
@@ -71,7 +78,7 @@ class SingleTest : TestBase() {
     @Test
     fun testBasicUnsubscribe() = runBlocking<Unit> {
         expect(1)
-        val single = rxSingle(context) {
+        val single = rxSingle(coroutineContext) {
             expect(4)
             yield() // back to main, will get cancelled
             expectUnreached()

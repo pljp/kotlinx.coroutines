@@ -16,29 +16,30 @@
 
 package kotlinx.coroutines.experimental.rx2
 
-import kotlinx.coroutines.experimental.CommonPool
-import kotlinx.coroutines.experimental.runBlocking
-import org.junit.Assert.assertEquals
-import org.junit.Assert.fail
-import org.junit.Test
 import io.reactivex.Observable
 import io.reactivex.Single
-import kotlinx.coroutines.experimental.TestBase
-import kotlinx.coroutines.experimental.yield
+import kotlinx.coroutines.experimental.*
 import org.hamcrest.core.IsEqual
 import org.hamcrest.core.IsInstanceOf
 import org.junit.Assert
-import java.util.concurrent.CancellationException
+import org.junit.Assert.assertEquals
+import org.junit.Before
+import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 /**
  * Tests emitting single item with [rxSingle].
  */
 class SingleTest : TestBase() {
+    @Before
+    fun setup() {
+        ignoreLostThreads("RxComputationThreadPool-", "RxCachedWorkerPoolEvictor-", "RxSchedulerPurge-")
+    }
+
     @Test
     fun testBasicSuccess() = runBlocking<Unit> {
         expect(1)
-        val single = rxSingle(context) {
+        val single = rxSingle(coroutineContext) {
             expect(4)
             "OK"
         }
@@ -55,7 +56,7 @@ class SingleTest : TestBase() {
     @Test
     fun testBasicFailure() = runBlocking<Unit> {
         expect(1)
-        val single = rxSingle(context) {
+        val single = rxSingle(coroutineContext) {
             expect(4)
             throw RuntimeException("OK")
         }
@@ -76,7 +77,7 @@ class SingleTest : TestBase() {
     @Test
     fun testBasicUnsubscribe() = runBlocking<Unit> {
         expect(1)
-        val single = rxSingle(context) {
+        val single = rxSingle(coroutineContext) {
             expect(4)
             yield() // back to main, will get cancelled
             expectUnreached()

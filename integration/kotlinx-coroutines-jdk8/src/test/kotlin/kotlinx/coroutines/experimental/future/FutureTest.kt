@@ -19,6 +19,7 @@ package kotlinx.coroutines.experimental.future
 import kotlinx.coroutines.experimental.*
 import org.hamcrest.core.IsEqual
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
@@ -27,6 +28,11 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.experimental.CoroutineContext
 
 class FutureTest : TestBase() {
+    @Before
+    fun setup() {
+        ignoreLostThreads("ForkJoinPool.commonPool-worker-")
+    }
+
     @Test
     fun testSimpleAwait() {
         val future = future {
@@ -161,7 +167,7 @@ class FutureTest : TestBase() {
     @Test
     fun testCompletedDeferredAsCompletableFuture() = runBlocking {
         expect(1)
-        val deferred = async(context, CoroutineStart.UNDISPATCHED) {
+        val deferred = async(coroutineContext, CoroutineStart.UNDISPATCHED) {
             expect(2) // completed right away
             "OK"
         }
@@ -174,7 +180,7 @@ class FutureTest : TestBase() {
     @Test
     fun testWaitForDeferredAsCompletableFuture() = runBlocking {
         expect(1)
-        val deferred = async(context) {
+        val deferred = async(coroutineContext) {
             expect(3) // will complete later
             "OK"
         }
@@ -188,7 +194,7 @@ class FutureTest : TestBase() {
     fun testCancellableAwaitFuture() = runBlocking {
         expect(1)
         val toAwait = CompletableFuture<String>()
-        val job = launch(context, CoroutineStart.UNDISPATCHED) {
+        val job = launch(coroutineContext, CoroutineStart.UNDISPATCHED) {
             expect(2)
             try {
                 toAwait.await() // suspends
@@ -210,7 +216,7 @@ class FutureTest : TestBase() {
         expect(1)
         val completable = CompletableFuture<String>()
         val toAwait: CompletionStage<String> = completable
-        val job = launch(context, CoroutineStart.UNDISPATCHED) {
+        val job = launch(coroutineContext, CoroutineStart.UNDISPATCHED) {
             expect(2)
             assertThat(toAwait.await(), IsEqual("OK")) // suspends
             expect(5)

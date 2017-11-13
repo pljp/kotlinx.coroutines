@@ -153,7 +153,7 @@ fun setup(hello: TextView, fab: FloatingActionButton) {
 `kotlinx-coroutines-android` モジュールへの依存関係を `app/build.gradle` ファイルの `dependencies { ... }` セクションに追加してください。
 
 ```groovy
-compile "org.jetbrains.kotlinx:kotlinx-coroutines-android:0.16"
+compile "org.jetbrains.kotlinx:kotlinx-coroutines-android:0.19.3"
 ```
 
 コルーチンはKotlinの実験的な機能です。
@@ -344,7 +344,7 @@ fun View.onClick(action: suspend () -> Unit) {
  
 以前のイベントを処理している間にイベントを無視するのではなく、最新のイベントを処理する方が適切な場合もあります。
 [actor]コルーチンビルダーは、このアクタがメールボックスに使用しているチャネルの実装を制御する、オプションの `capacity` パラメータを受け取ります。
-利用可能なすべての選択肢の説明は、[Channel()][Channel.invoke]ファクトリ関数のドキュメントに記載されています。
+利用可能なすべての選択肢の説明は、[`Channel()`][Channel]ファクトリ関数のドキュメントに記載されています。
 
 [Channel.CONFLATED]の容量値を渡すことで[ConflatedChannel]を使用するコードを変更しましょう。
 この変更は、アクタを作成する行にのみ適用されます。
@@ -656,7 +656,7 @@ After delay
 [SendChannel.offer]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-send-channel/offer.html
 [SendChannel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-send-channel/index.html
 [RendezvousChannel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-rendezvous-channel/index.html
-[Channel.invoke]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-channel/invoke.html
+[Channel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-channel/index.html
 [ConflatedChannel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-conflated-channel/index.html
 [Channel.CONFLATED]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-channel/-c-o-n-f-l-a-t-e-d.html
 [LinkedListChannel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-linked-list-channel/index.html

@@ -22,6 +22,7 @@ import java.util.concurrent.CompletionStage
 import java.util.concurrent.ExecutionException
 import java.util.function.BiConsumer
 import kotlin.coroutines.experimental.Continuation
+import kotlin.coroutines.experimental.ContinuationInterceptor
 import kotlin.coroutines.experimental.CoroutineContext
 import kotlin.coroutines.experimental.suspendCoroutine
 
@@ -30,11 +31,12 @@ import kotlin.coroutines.experimental.suspendCoroutine
  * This coroutine builder uses [CommonPool] context by default and is conceptually similar to [CompletableFuture.supplyAsync].
  *
  * The running coroutine is cancelled when the resulting future is cancelled or otherwise completed.
- * If the [context] for the new coroutine is omitted or is explicitly specified but does not include a
- * coroutine interceptor, then [CommonPool] is used.
- * See [CoroutineDispatcher] for other standard [context] implementations that are provided by `kotlinx.coroutines`.
+ *
+ * The [context] for the new coroutine can be explicitly specified.
+ * See [CoroutineDispatcher] for the standard context implementations that are provided by `kotlinx.coroutines`.
  * The [context][CoroutineScope.context] of the parent coroutine from its [scope][CoroutineScope] may be used,
  * in which case the [Job] of the resulting coroutine is a child of the job of the parent coroutine.
+ * If the context does not have any dispatcher nor any other [ContinuationInterceptor], then [DefaultDispatcher] is used.
  *
  * By default, the coroutine is immediately scheduled for execution.
  * Other options can be specified via `start` parameter. See [CoroutineStart] for details.
@@ -44,17 +46,17 @@ import kotlin.coroutines.experimental.suspendCoroutine
  *
  * See [newCoroutineContext] for a description of debugging facilities that are available for newly created coroutine.
  *
- * @param context context of the coroutine
- * @param start coroutine start option
- * @param block the coroutine code
+ * @param context context of the coroutine. The default value is [DefaultDispatcher].
+ * @param start coroutine start option. The default value is [CoroutineStart.DEFAULT].
+ * @param block the coroutine code.
  */
 public fun <T> future(
-    context: CoroutineContext = CommonPool,
+    context: CoroutineContext = DefaultDispatcher,
     start: CoroutineStart = CoroutineStart.DEFAULT,
     block: suspend CoroutineScope.() -> T
 ): CompletableFuture<T> {
     require(!start.isLazy) { "$start start is not supported" }
-    val newContext = newCoroutineContext(CommonPool + context)
+    val newContext = newCoroutineContext(context)
     val job = Job(newContext[Job])
     val future = CompletableFutureCoroutine<T>(newContext + job)
     job.cancelFutureOnCompletion(future)
@@ -66,6 +68,7 @@ public fun <T> future(
 private class CompletableFutureCoroutine<T>(
     override val context: CoroutineContext
 ) : CompletableFuture<T>(), Continuation<T>, CoroutineScope {
+    override val coroutineContext: CoroutineContext get() = context
     override val isActive: Boolean get() = context[Job]!!.isActive
     override fun resume(value: T) { complete(value) }
     override fun resumeWithException(exception: Throwable) { completeExceptionally(exception) }
@@ -102,7 +105,7 @@ public suspend fun <T> CompletionStage<T>.await(): T = suspendCoroutine { cont: 
  * Awaits for completion of the future without blocking a thread.
  *
  * This suspending function is cancellable.
- * If the [Job] of the current coroutine is completed while this suspending function is waiting, this function
+ * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
  * stops waiting for the future and immediately resumes with [CancellationException].
  *
  * Note, that `CompletableFuture` does not support prompt removal of installed listeners, so on cancellation of this wait
@@ -132,6 +135,7 @@ public suspend fun <T> CompletableFuture<T>.await(): T {
 private class ContinuationConsumer<T>(
     @Volatile @JvmField var cont: Continuation<T>?
 ) : BiConsumer<T?, Throwable?> {
+    @Suppress("UNCHECKED_CAST")
     override fun accept(result: T?, exception: Throwable?) {
         val cont = this.cont ?: return // atomically read current value unless null
         if (exception == null) // the future has been completed normally

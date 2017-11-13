@@ -20,10 +20,16 @@ import kotlinx.coroutines.experimental.*
 import org.hamcrest.core.IsEqual
 import org.hamcrest.core.IsNot
 import org.junit.Assert.assertThat
+import org.junit.Before
 import org.junit.Test
 import rx.schedulers.Schedulers
 
 class SchedulerTest : TestBase() {
+    @Before
+    fun setup() {
+        ignoreLostThreads("RxIoScheduler-")
+    }
+
     @Test
     fun testIoScheduler(): Unit = runBlocking {
         expect(1)

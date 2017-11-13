@@ -16,27 +16,35 @@
 
 package kotlinx.coroutines.experimental.reactive
 
+import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.loop
 import kotlinx.coroutines.experimental.channels.LinkedListChannel
 import kotlinx.coroutines.experimental.channels.SubscriptionReceiveChannel
 import org.reactivestreams.Publisher
 import org.reactivestreams.Subscriber
 import org.reactivestreams.Subscription
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater
 
 /**
  * Subscribes to this [Publisher] and returns a channel to receive elements emitted by it.
  * The resulting channel shall be [closed][SubscriptionReceiveChannel.close] to unsubscribe from this publisher.
  */
-public fun <T> Publisher<T>.open(): SubscriptionReceiveChannel<T> {
+public fun <T> Publisher<T>.openSubscription(): SubscriptionReceiveChannel<T> {
     val channel = SubscriptionChannel<T>()
     subscribe(channel)
     return channel
 }
 
 /**
+ * @suppress **Deprecated**: Renamed to [openSubscription]
+ */
+@Deprecated(message = "Renamed to `openSubscription`",
+    replaceWith = ReplaceWith("openSubscription()"))
+public fun <T> Publisher<T>.open(): SubscriptionReceiveChannel<T> = openSubscription()
+
+/**
  * Subscribes to this [Publisher] and returns an iterator to receive elements emitted by it.
  *
- * This is a shortcut for `open().iterator()`. See [open] if you need an ability to manually
+ * This is a shortcut for `open().iterator()`. See [openSubscription] if you need an ability to manually
  * unsubscribe from the observable.
  */
 
@@ -45,43 +53,40 @@ public fun <T> Publisher<T>.open(): SubscriptionReceiveChannel<T> {
     "This iteration operator for `for (x in source) { ... }` loop is deprecated, " +
     "because it leaves code vulnerable to leaving unclosed subscriptions on exception. " +
     "Use `source.consumeEach { x -> ... }`.")
-public operator fun <T> Publisher<T>.iterator() = open().iterator()
+public operator fun <T> Publisher<T>.iterator() = openSubscription().iterator()
 
 /**
  * Subscribes to this [Publisher] and performs the specified action for each received element.
  */
-// :todo: make it inline when this bug is fixed: https://youtrack.jetbrains.com/issue/KT-16448
-public suspend fun <T> Publisher<T>.consumeEach(action: suspend (T) -> Unit) {
-    open().use { channel ->
+public inline suspend fun <T> Publisher<T>.consumeEach(action: (T) -> Unit) {
+    openSubscription().use { channel ->
         for (x in channel) action(x)
     }
 }
+
+/**
+ * @suppress: **Deprecated**: binary compatibility with old code
+ */
+@Deprecated("binary compatibility with old code", level = DeprecationLevel.HIDDEN)
+public suspend fun <T> Publisher<T>.consumeEach(action: suspend (T) -> Unit) =
+    consumeEach { action(it) }
 
 private class SubscriptionChannel<T> : LinkedListChannel<T>(), SubscriptionReceiveChannel<T>, Subscriber<T> {
     @Volatile
     @JvmField
     var subscription: Subscription? = null
 
-    @Volatile
-    @JvmField
     // request balance from cancelled receivers, balance is negative if we have receivers, but no subscription yet
-    var balance = 0
-
-    private companion object {
-        @JvmField
-        val BALANCE: AtomicIntegerFieldUpdater<SubscriptionChannel<*>> =
-            AtomicIntegerFieldUpdater.newUpdater(SubscriptionChannel::class.java, "balance")
-    }
+    val _balance = atomic(0)
 
     // AbstractChannel overrides
     override fun onEnqueuedReceive() {
-        loop@ while (true) { // lock-free loop on balance
-            val balance = this.balance
+        _balance.loop { balance ->
             val subscription = this.subscription
             if (subscription != null) {
                 if (balance < 0) { // receivers came before we had subscription
                     // try to fixup by making request
-                    if (!BALANCE.compareAndSet(this, balance, 0)) continue@loop
+                    if (!_balance.compareAndSet(balance, 0)) return@loop // continue looping
                     subscription.request(-balance.toLong())
                     return
                 }
@@ -90,12 +95,12 @@ private class SubscriptionChannel<T> : LinkedListChannel<T>(), SubscriptionRecei
                     return
                 }
             }
-            if (BALANCE.compareAndSet(this, balance, balance - 1)) return
+            if (_balance.compareAndSet(balance, balance - 1)) return
         }
     }
 
     override fun onCancelledReceive() {
-        BALANCE.incrementAndGet(this)
+        _balance.incrementAndGet()
     }
 
     override fun afterClose(cause: Throwable?) {
@@ -115,11 +120,11 @@ private class SubscriptionChannel<T> : LinkedListChannel<T>(), SubscriptionRecei
                 s.cancel()
                 return
             }
-            val balance = this.balance
+            val balance = _balance.value
             if (balance >= 0) return // ok -- normal story
             // otherwise, receivers came before we had subscription
             // try to fixup by making request
-            if (!BALANCE.compareAndSet(this, balance, 0)) continue
+            if (!_balance.compareAndSet(balance, 0)) continue
             s.request(-balance.toLong())
             return
         }

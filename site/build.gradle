@@ -1,0 +1,17 @@
+
+task copyDocs(type: Copy, dependsOn: rootProject.getTasksByName("dokka", true)) {
+    from (rootProject.getTasksByName("dokka", true).collect { "$it.project.buildDir/dokka" }) {
+        include "**/*.md"
+    }
+    from "docs"
+    into "$buildDir/gh-pages"
+}
+
+task site(type: Exec, description: 'Generate github pages', dependsOn: copyDocs) {
+    workingDir "$buildDir/gh-pages"
+    commandLine 'jekyll', 'build'
+}
+
+task clean(type: Delete) {
+    delete buildDir
+}

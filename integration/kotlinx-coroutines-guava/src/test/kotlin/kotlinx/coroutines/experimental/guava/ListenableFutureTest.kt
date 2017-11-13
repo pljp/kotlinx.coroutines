@@ -22,12 +22,18 @@ import kotlinx.coroutines.experimental.*
 import org.hamcrest.core.IsEqual
 import org.hamcrest.core.IsInstanceOf
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
 import java.util.concurrent.Callable
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.ForkJoinPool
 
 class ListenableFutureTest : TestBase() {
+    @Before
+    fun setup() {
+        ignoreLostThreads("ForkJoinPool.commonPool-worker-")
+    }
+
     @Test
     fun testSimpleAwait() {
         val service = MoreExecutors.listeningDecorator(ForkJoinPool.commonPool())
@@ -112,7 +118,7 @@ class ListenableFutureTest : TestBase() {
     @Test
     fun testCompletedDeferredAsListenableFuture() = runBlocking {
         expect(1)
-        val deferred = async(context, CoroutineStart.UNDISPATCHED) {
+        val deferred = async(coroutineContext, CoroutineStart.UNDISPATCHED) {
             expect(2) // completed right away
             "OK"
         }
@@ -125,7 +131,7 @@ class ListenableFutureTest : TestBase() {
     @Test
     fun testWaitForDeferredAsListenableFuture() = runBlocking {
         expect(1)
-        val deferred = async(context) {
+        val deferred = async(coroutineContext) {
             expect(3) // will complete later
             "OK"
         }
@@ -139,7 +145,7 @@ class ListenableFutureTest : TestBase() {
     fun testCancellableAwait() = runBlocking {
         expect(1)
         val toAwait = SettableFuture.create<String>()
-        val job = launch(context, CoroutineStart.UNDISPATCHED) {
+        val job = launch(coroutineContext, CoroutineStart.UNDISPATCHED) {
             expect(2)
             try {
                 toAwait.await() // suspends
