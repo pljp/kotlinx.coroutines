@@ -1,6 +1,7 @@
 # Coroutines integration
 
-This directory contains modules that provide integration with various asynchronous callback- and future-based libraries:
+This directory contains modules that provide integration with various asynchronous callback- and future-based libraries.
+Module name below corresponds to the artifact name in Maven/Gradle.
 
 ## Modules
 
@@ -8,6 +9,7 @@ This directory contains modules that provide integration with various asynchrono
 * [kotlinx-coroutines-nio](kotlinx-coroutines-nio/README.md) -- integration with asynchronous IO on JDK7+ (Android O Preview).
 * [kotlinx-coroutines-guava](kotlinx-coroutines-guava/README.md) -- integration with Guava [ListenableFuture](https://github.com/google/guava/wiki/ListenableFutureExplained).
 * [kotlinx-coroutines-quasar](kotlinx-coroutines-quasar/README.md) -- integration with [Quasar](http://docs.paralleluniverse.co/quasar/).
+* [kotlinx-coroutines-slf4j](kotlinx-coroutines-slf4j/README.md) -- integration with SLF4J [MDC](https://logback.qos.ch/manual/mdc.html).
 
 ## Contributing
 

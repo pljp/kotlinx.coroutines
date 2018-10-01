@@ -1,25 +1,10 @@
 /*
- * Copyright 2016-2017 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-import java.io.File
-import java.io.IOException
-import java.io.LineNumberReader
-import java.io.Reader
+import java.io.*
 import java.util.*
-import kotlin.properties.Delegates
+import kotlin.properties.*
 
 // --- props in knit.properties
 
@@ -61,9 +46,11 @@ const val ARBITRARY_TIME_PREDICATE = "ARBITRARY_TIME"
 const val FLEXIBLE_TIME_PREDICATE = "FLEXIBLE_TIME"
 const val FLEXIBLE_THREAD_PREDICATE = "FLEXIBLE_THREAD"
 const val LINES_START_UNORDERED_PREDICATE = "LINES_START_UNORDERED"
+const val EXCEPTION_MODE = "EXCEPTION"
 const val LINES_START_PREDICATE = "LINES_START"
 
 val API_REF_REGEX = Regex("(^|[ \\]])\\[([A-Za-z0-9_().]+)\\]($|[^\\[\\(])")
+val LINK_DEF_REGEX = Regex("^\\[([A-Za-z0-9_().]+)\\]: .*")
 
 fun main(args: Array<String>) {
     if (args.isEmpty()) {
@@ -199,10 +186,16 @@ fun knit(markdownFileName: String): Boolean {
                 tocLines += "  ".repeat(i - 2) + "* [$name](#${makeSectionRef(name)})"
                 continue@mainLoop
             }
-            for (match in API_REF_REGEX.findAll(inLine)) {
-                val apiRef = ApiRef(lineNumber, match.groups[2]!!.value)
-                allApiRefs += apiRef
-                remainingApiRefNames += apiRef.name
+            val linkDefMatch = LINK_DEF_REGEX.matchEntire(inLine)
+            if (linkDefMatch != null) {
+                val name = linkDefMatch.groups[1]!!.value
+                remainingApiRefNames -= name
+            } else {
+                for (match in API_REF_REGEX.findAll(inLine)) {
+                    val apiRef = ApiRef(lineNumber, match.groups[2]!!.value)
+                    allApiRefs += apiRef
+                    remainingApiRefNames += apiRef.name
+                }
             }
             knitRegex?.find(inLine)?.let { knitMatch ->
                 val fileName = knitMatch.groups[1]!!.value
@@ -219,7 +212,9 @@ fun knit(markdownFileName: String): Boolean {
                         outLines += line
                     }
                 }
-                outLines += codeLines
+                for (code in codeLines) {
+                    outLines += code.replace("System.currentTimeMillis()", "timeSource.currentTimeMillis()")
+                }
                 codeLines.clear()
                 writeLinesIfNeeded(file, outLines)
             }
@@ -270,9 +265,10 @@ fun makeTest(testOutLines: MutableList<String>, pgk: String, test: List<String>,
         FLEXIBLE_TIME_PREDICATE -> makeTestLines(testOutLines, prefix, "verifyLinesFlexibleTime", test)
         FLEXIBLE_THREAD_PREDICATE -> makeTestLines(testOutLines, prefix, "verifyLinesFlexibleThread", test)
         LINES_START_UNORDERED_PREDICATE -> makeTestLines(testOutLines, prefix, "verifyLinesStartUnordered", test)
+        EXCEPTION_MODE -> makeTestLines(testOutLines, prefix, "verifyExceptions", test)
         LINES_START_PREDICATE -> makeTestLines(testOutLines, prefix, "verifyLinesStart", test)
         else -> {
-            testOutLines += prefix +  ".also { lines ->"
+            testOutLines += "$prefix.also { lines ->"
             testOutLines += "            check($predicate)"
             testOutLines += "        }"
         }
@@ -410,8 +406,8 @@ fun writeLines(file: File, lines: List<String>) {
 
 fun findModuleRootDir(name: String): String =
     moduleRoots
-        .map { it + "/" + name }
-        .firstOrNull { File(it + "/" + moduleMarker).exists() }
+        .map { "$it/$name" }
+        .firstOrNull { File("$it/$moduleMarker").exists() }
         ?: throw IllegalArgumentException("Module $name is not found in any of the module root dirs")
 
 data class ApiIndexKey(
@@ -419,26 +415,21 @@ data class ApiIndexKey(
     val pkg: String
 )
 
-val apiIndexCache: MutableMap<ApiIndexKey, Map<String, String>> = HashMap()
+val apiIndexCache: MutableMap<ApiIndexKey, Map<String, List<String>>> = HashMap()
 
-val REF_LINE_REGEX = Regex("<a href=\"([a-z/.\\-]+)\">([a-zA-z.]+)</a>")
+val REF_LINE_REGEX = Regex("<a href=\"([a-z_/.\\-]+)\">([a-zA-z.]+)</a>")
 val INDEX_HTML = "/index.html"
 val INDEX_MD = "/index.md"
 val FUNCTIONS_SECTION_HEADER = "### Functions"
 
-val AMBIGUOUS = "#AMBIGUOUS: "
-
-fun HashMap<String,String>.putUnambiguous(key: String, value: String) {
+fun HashMap<String, MutableList<String>>.putUnambiguous(key: String, value: String) {
     val oldValue = this[key]
-    val putVal =
-        if (oldValue != null && oldValue != value) {
-            when {
-                oldValue.contains("[$value]") -> oldValue
-                oldValue.startsWith(AMBIGUOUS) -> "$oldValue; [$value]"
-                else -> "$AMBIGUOUS[$oldValue]; [$value]"
-            }
-        } else value
-    put(key, putVal)
+    if (oldValue != null) {
+        oldValue.add(value)
+        put(key, oldValue)
+    } else {
+        put(key, mutableListOf(value))
+    }
 }
 
 fun loadApiIndex(
@@ -446,10 +437,10 @@ fun loadApiIndex(
     path: String,
     pkg: String,
     namePrefix: String = ""
-): Map<String, String>? {
+): Map<String, MutableList<String>>? {
     val fileName = docsRoot + "/" + path + INDEX_MD
     val visited = mutableSetOf<String>()
-    val map = HashMap<String,String>()
+    val map = HashMap<String, MutableList<String>>()
     var inFunctionsSection = false
     File(fileName).withLineNumberReader<LineNumberReader>(::LineNumberReader) {
         while (true) {
@@ -499,11 +490,12 @@ fun processApiIndex(
     while (it.hasNext()) {
         val refName = it.next()
         val refLink = map[refName] ?: continue
-        if (refLink.startsWith(AMBIGUOUS)) {
-            println("WARNING: Ambiguous reference to [$refName]: ${refLink.substring(AMBIGUOUS.length)}")
-            continue
+        if (refLink.size > 1) {
+            println("INFO: Ambiguous reference to [$refName]: $refLink, taking the shortest one")
         }
-        indexList += "[$refName]: $siteRoot/$refLink"
+
+        val link = refLink.minBy { it.length }
+        indexList += "[$refName]: $siteRoot/$link"
         it.remove()
     }
     return indexList

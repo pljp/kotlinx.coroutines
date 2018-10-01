@@ -1,7 +1,17 @@
-dependencies {
-    compileOnly 'com.google.android:android:2.3.1'
+/*
+ * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ */
+
+repositories {
+    google()
 }
-dokka {
+
+dependencies {
+    compileOnly 'com.google.android:android:4.1.1.4'
+    compileOnly 'com.android.support:support-annotations:26.1.0'
+}
+
+tasks.withType(dokka.getClass()) {
     externalDocumentationLink {
         url = new URL("https://developer.android.com/reference/")
     }

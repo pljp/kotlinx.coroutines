@@ -1,29 +1,18 @@
 <!--- INCLUDE .*/example-reactive-([a-z]+)-([0-9]+)\.kt 
 /*
- * Copyright 2016-2017 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 // This file was automatically generated from coroutines-guide-reactive.md by Knit tool. Do not edit.
-package guide.reactive.$$1.example$$2
+package kotlinx.coroutines.experimental.rx2.guide.$$1$$2
 
 -->
-<!--- KNIT     kotlinx-coroutines-rx2/src/test/kotlin/guide/.*\.kt -->
-<!--- TEST_OUT kotlinx-coroutines-rx2/src/test/kotlin/guide/test/GuideReactiveTest.kt
+<!--- KNIT     kotlinx-coroutines-rx2/test/guide/.*\.kt -->
+<!--- TEST_OUT kotlinx-coroutines-rx2/test/guide/test/GuideReactiveTest.kt
 // This file was automatically generated from coroutines-guide-reactive.md by Knit tool. Do not edit.
-package guide.test
+package kotlinx.coroutines.experimental.rx2.guide.test
 
+import kotlinx.coroutines.experimental.guide.test.*
 import org.junit.Test
 
 class GuideReactiveTest : ReactiveTestBase() {
@@ -43,8 +32,8 @@ class GuideReactiveTest : ReactiveTestBase() {
 
 このガイドは主に[リアクティブストリーム](http://www.reactive-streams.org)仕様に基づいており、[RxJava 2.x](https://github.com/ReactiveX/RxJava) に基づくいくつかの例とともに `Publisher` インターフェイスを使用しています。これはリアクティブストリーム仕様を実装しています。
 
-提示されたすべての例を実行するために [`kotlinx.coroutines` プロジェクト](https://github.com/Kotlin/kotlinx.coroutines)をGitHubからあなたのワークステーションにクローンすることを歓迎します。
-これらはプロジェクトの[reactive/kotlinx-coroutines-rx2/src/test/kotlin/guide](kotlinx-coroutines-rx2/src/test/kotlin/guide)ディレクトリに含まれています。
+提示されたすべての例を実行するために[`kotlinx.coroutines` プロジェクト](https://github.com/Kotlin/kotlinx.coroutines)をGitHubからあなたのワークステーションにクローンすることを歓迎します。
+これらはプロジェクトの[reactive/kotlinx-coroutines-rx2/test/guide](kotlinx-coroutines-rx2/test/guide)ディレクトリに含まれています。
  
 ## 目次
 
@@ -91,12 +80,13 @@ class GuideReactiveTest : ReactiveTestBase() {
 <!--- INCLUDE
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.*
+import kotlin.coroutines.experimental.*
 -->
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     // 200ミリ秒間隔で遅延する1～3の数値を生成するチャンネルを作成する
-    val source = produce<Int>(coroutineContext) {
+    val source = produce<Int> {
         println("Begin") // このコルーチンの開始を出力する
         for (x in 1..3) {
             delay(200) // 200ミリ秒待つ
@@ -116,7 +106,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-01.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-basic-01.kt)で完全なコードを取得できます
 
 このコードは、次の出力を生成します。
 
@@ -141,12 +131,13 @@ Again:
 <!--- INCLUDE
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.reactive.*
+import kotlin.coroutines.experimental.*
 -->
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     // 200ミリ秒間隔で遅延する1～3の数値を生成するパブリッシャーを作成する
-    val source = publish<Int>(coroutineContext) {  
+    val source = publish<Int> {
     //           ^^^^^^^  <---  以前の例との違いはここ
         println("Begin") // このコルーチンの開始を出力する
         for (x in 1..3) {
@@ -167,7 +158,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-02.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-basic-02.kt)で完全なコードを取得できます
 
 今度はこのコードの出力が次のように変わります。
 
@@ -198,6 +189,9 @@ _サブスクリプション_ の要素の実際のストリームになりま�
 Rx用語では、これは _コールド_ パブリッシャーと呼ばれます。多くの標準Rx演算子もコールドストリームを生成します。
 コルーチンからそれらを反復することができ、すべてのサブスクリプションは同じ要素のストリームを生成します。
 
+**警告**: 将来、すでに消費されているチャンネルの `consumeEach` メソッドの2回目の呼び出しが失敗し、すぐに `IllegalStateException` がスローされることが計画されています。
+詳細については、[この問題](https://github.com/Kotlin/kotlinx.coroutines/issues/167)を参照してください。
+
 > Rx [publish](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#publish())演算子と[connect](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/flowables/ConnectableFlowable.html#connect())メソッドを使って、チャンネルで見たのと同じ振る舞いを再現できます。
 
 ### サブスクリプションとキャンセル
@@ -208,6 +202,7 @@ Rx用語では、これは _コールド_ パブリッシャーと呼ばれま�
 <!--- INCLUDE
 import io.reactivex.*
 import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.channels.*
 import kotlinx.coroutines.experimental.reactive.*
 -->
 
@@ -215,19 +210,20 @@ import kotlinx.coroutines.experimental.reactive.*
 fun main(args: Array<String>) = runBlocking<Unit> {
     val source = Flowable.range(1, 5) // 5つの数値のレンジ
         .doOnSubscribe { println("OnSubscribe") } // 洞察を提供する
+        .doOnComplete { println("OnComplete") }   // ...
         .doFinally { println("Finally") }         // ... 何が起きているか
     var cnt = 0 
-    source.openSubscription().use { channel -> // ソースのチャネルを開く
-        for (x in channel) { // 反復してチャネルから要素を受け取る
+    source.openSubscription().consume { // ソースのチャネルを開く
+        for (x in this) { // 反復してチャネルから要素を受け取る
             println(x)
             if (++cnt >= 3) break // 3つの要素をプリントしたら中止する
         }
-        // このコードブロックが完了すると、 `use` がチャネルを閉じる
+        // このコードブロックが完了すると、 `consume`がチャンネルをキャンセルする
     }
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-03.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-basic-03.kt)で完全なコードを取得できます
 
 次の出力が生成されます。
 
@@ -241,29 +237,33 @@ Finally
 
 <!--- TEST -->
  
-明示的に `openSubscription` すると、対応するサブスクリプションを[close][SubscriptionReceiveChannel.close]して、ソースからの登録を解除しなければなりません。
-しかし、明示的に `close` を呼び出すのではなく、このコードはKotlinの標準ライブラリの[use](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/use.html)関数に頼っています。
-インストールされた[doFinally](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#doFinally(io.reactivex.functions.Action))リスナーは、サブスクリプションが実際に閉じられていることを確認するために "Finally" をプリントします。
+明示的に `openSubscription` すると、対応するサブスクリプションを[cancel][ReceiveChannel.cancel]して、ソースからの登録を解除しなければなりません。
+明示的に `cancel` を呼び出す必要はありません。 `consume` は、私たちのためにそれを行います。
 
-パブリッシャーが出力したすべてのアイテムに対して反復処理を実行する場合、`consumeEach` によって自動的に閉じられているので明示的な `close` を使う必要はありません。
+インストールされた[doFinally](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#doFinally(io.reactivex.functions.Action))リスナーは、サブスクリプションが実際に閉じられていることを確認するために "Finally" をプリントします。
+"OnComplete" は、すべての要素を消費しなかったので決してプリントされません。
+
+`consumeEach` によって自動的にキャンセルされるため、パブリッシャーが発行するすべてのアイテムに対して反復処理を実行する場合、明示的に `cancel` を使用する必要はありません。
 
 <!--- INCLUDE
 import io.reactivex.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.reactive.*
+import kotlin.coroutines.experimental.*
 -->
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
     val source = Flowable.range(1, 5) // 5つの数値のレンジ
         .doOnSubscribe { println("OnSubscribe") } // 洞察を提供する
+        .doOnComplete { println("OnComplete") }   // ...
         .doFinally { println("Finally") }         // ... 何が起きているか
     // ソースをすべて反復する
     source.consumeEach { println(it) }
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-04.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-basic-04.kt)で完全なコードを取得できます
 
 次の出力が得られます。
 
@@ -273,13 +273,14 @@ OnSubscribe
 2
 3
 4
+OnComplete
 Finally
 5
 ```
 
 <!--- TEST -->
 
-最後の要素 "5" の前に "Finally" がどのように出力されるかに注意してください。
+最後の要素 "5" の前に "OnComplete" と "Finally" がどのように出力されるかに注意してください。
 これは、この例の `main` 関数が[runBlocking]コルーチンビルダーで始まるコルーチンであるために起こります。
 メインコルーチンは `source.consumeEach { ... }` 式を使ってチャネルで受信します。
 メインコルーチンは、ソースがアイテムを出力するのを待つ間 _中断_ されます。
@@ -298,15 +299,16 @@ Rx Java 2.xでは、バックプレッシャー対応クラスは[Flowable](http
 サブスクライバーは遅いです。 `Thread.sleep` を使ってシミュレートされ各アイテムを処理するのに500ミリ秒かかります。
 
 <!--- INCLUDE
+import io.reactivex.schedulers.*
 import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.rx2.rxFlowable
-import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.experimental.rx2.*
+import kotlin.coroutines.experimental.*
 -->
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> { 
     // コルーチン - メインスレッドコンテキストにおける要素の高速プロデューサー
-    val source = rxFlowable(coroutineContext) {
+    val source = rxFlowable {
         for (x in 1..3) {
             send(x) // これはサスペンド関数
             println("Sent $x") // アイテムが正常に送信された後にプリントする
@@ -324,7 +326,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-05.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-basic-05.kt)で完全なコードを取得できます
 
 このコードの出力は、コルーチンでバックプレッシャーがどのように機能するかをうまく示しています。
 
@@ -365,7 +367,7 @@ fun main(args: Array<String>) {
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-06.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-basic-06.kt)で完全なコードを取得できます
 
 このコードは、サブスクリプションとそのすべての更なるアップデートでサブジェクトの現在の状態をプリントします。
 
@@ -381,9 +383,7 @@ four
    
 <!--- INCLUDE 
 import io.reactivex.subjects.BehaviorSubject
-import kotlinx.coroutines.experimental.Unconfined
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.rx2.consumeEach
 -->   
    
@@ -393,7 +393,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     subject.onNext("one")
     subject.onNext("two")
     // すべてを印刷するコルーチンを起動する
-    launch(Unconfined) { // 制限のないコンテキストでコルーチンを起動する
+    GlobalScope.launch(Dispatchers.Unconfined) { // 制約のないコンテキストでコルーチンを起動する
         subject.consumeEach { println(it) }
     }
     subject.onNext("three")
@@ -401,7 +401,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```   
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-07.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-basic-07.kt)で完全なコードを取得できます
 
 結果は同じです。
 
@@ -413,7 +413,7 @@ four
 
 <!--- TEST -->
 
-ここでは、[Unconfined]コルーチンコンテキストを使用して、Rxのサブスクリプションと同じ動作をする消費コルーチンを起動します。
+ここでは、[Dispatchers.Unconfined]コルーチンコンテキストを使用して、Rxのサブスクリプションと同じ動作をする消費コルーチンを起動します。
 基本的には、起動したコルーチンは要素が出力されるのと同じスレッドで直ちに実行されることを意味します。
 コンテキストの詳細については、[別のセクション](#コルーチンコンテキスト)を参照してください。
 
@@ -423,11 +423,10 @@ UIスレッドが解放されるとすぐに、アプリケーションの状態
 次の例では、メインスレッドのコンテキストで消費コルーチンを起動し、[yield]関数を使用して一連の更新の中断をシミュレートしメインスレッドを解放することで、これをシミュレートします。
 
 <!--- INCLUDE
-import io.reactivex.subjects.BehaviorSubject
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.runBlocking
-import kotlinx.coroutines.experimental.rx2.consumeEach
-import kotlinx.coroutines.experimental.yield
+import io.reactivex.subjects.*
+import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.rx2.*
+import kotlin.coroutines.experimental.*
 -->
 
 ```kotlin
@@ -436,7 +435,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     subject.onNext("one")
     subject.onNext("two")
     // 最新の更新をプリントするコルーチンを起動
-    launch(coroutineContext) { // コルーチンのメインスレッドのコンテキストを使用する
+    launch { // コルーチンのメインスレッドのコンテキストを使用する
         subject.consumeEach { println(it) }
     }
     subject.onNext("three")
@@ -446,7 +445,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-08.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-basic-08.kt)で完全なコードを取得できます
 
 コルーチンは最新のアップデートのみを処理（プリント）します。
 
@@ -459,11 +458,9 @@ four
 純粋なコルーチンの世界でこれに相当する挙動は、[ConflatedBroadcastChannel]によって実装されています。これはブリッジを経由してリアクティブストリームに行くことなく、コルーチンチャネルの上に同じロジックを直接提供します。
 
 <!--- INCLUDE
-import kotlinx.coroutines.experimental.channels.ConflatedBroadcastChannel
-import kotlinx.coroutines.experimental.channels.consumeEach
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.runBlocking
-import kotlinx.coroutines.experimental.yield
+import kotlinx.coroutines.experimental.channels.*
+import kotlinx.coroutines.experimental.*
+import kotlin.coroutines.experimental.*
 -->
 
 ```kotlin
@@ -472,7 +469,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     broadcast.offer("one")
     broadcast.offer("two")
     // 最新の更新をプリントするコルーチンを起動
-    launch(coroutineContext) { // コルーチンのメインスレッドのコンテキストを使用する
+    launch { // コルーチンのメインスレッドのコンテキストを使用する
         broadcast.consumeEach { println(it) }
     }
     broadcast.offer("three")
@@ -482,7 +479,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-basic-09.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-basic-09.kt)で完全なコードを取得できます
 
 `BehaviorSubject` に基づく前の例と同じ出力を生成します。
 
@@ -520,23 +517,24 @@ import kotlin.coroutines.experimental.CoroutineContext
 -->
 
 ```kotlin
-fun range(context: CoroutineContext, start: Int, count: Int) = publish<Int>(context) {
+fun CoroutineScope.range(context: CoroutineContext, start: Int, count: Int) = publish<Int>(context) {
     for (x in start until start + count) send(x)
 }
 ```
 
-このコードでは、 `Executor` の代わりに `CoroutineContext` が使用されています。また、バックプレッシャーのすべての側面はコルーチンの仕組みで扱われます。
+このコードでは、 `Executor` の代わりに `CoroutineScope` と `context` が使用されています。また、バックプレッシャーのすべての側面はコルーチンの仕組みで扱われます。
 この実装は、 `Publisher` インターフェイスとその仲間を定義する小さなリアクティブストリームライブラリのみに依存していることに注意してください。
 
 コルーチンから使用するのは簡単です。
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    range(CommonPool, 1, 5).consumeEach { println(it) }
+    // RangeはrunBlockingから親ジョブを継承しますが、Dispatchers.Defaultでディスパッチャーをオーバーライドします。
+    range(Dispatchers.Default, 1, 5).consumeEach { println(it) }
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-operators-01.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-operators-01.kt)で完全なコードを取得できます
 
 このコードの結果は極めて当然です。
    
@@ -558,8 +556,8 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 <!--- INCLUDE
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.reactive.*
-import org.reactivestreams.Publisher
-import kotlin.coroutines.experimental.CoroutineContext
+import org.reactivestreams.*
+import kotlin.coroutines.experimental.*
 -->
 
 ```kotlin
@@ -567,7 +565,7 @@ fun <T, R> Publisher<T>.fusedFilterMap(
     context: CoroutineContext,   // このコルーチンを実行するためのコンテキスト
     predicate: (T) -> Boolean,   // フィルター述語
     mapper: (T) -> R             // mapper関数
-) = publish<R>(context) {
+) = GlobalScope.publish<R>(context) {
     consumeEach {                // ソースストリームを消費する
         if (predicate(it))       // フィルター部
             send(mapper(it))     // マップ部
@@ -579,20 +577,20 @@ fun <T, R> Publisher<T>.fusedFilterMap(
 
 <!--- INCLUDE
 
-fun range(context: CoroutineContext, start: Int, count: Int) = publish<Int>(context) {
+fun CoroutineScope.range(start: Int, count: Int) = publish<Int> {
     for (x in start until start + count) send(x)
 }
 -->
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-   range(coroutineContext, 1, 5)
+   range(1, 5)
        .fusedFilterMap(coroutineContext, { it % 2 == 0}, { "$it is even" })
        .consumeEach { println(it) } // 結果の文字列をすべてプリントする
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-operators-02.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-operators-02.kt)で完全なコードを取得できます
 
 結果を確認するのは難しくなく、次のようになるでしょう。
 
@@ -611,20 +609,23 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 しかし、コルーチンの実装を助ける[select]式があります。
 
 <!--- INCLUDE
+import kotlinx.coroutines.experimental.channels.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.reactive.*
-import org.reactivestreams.Publisher
-import kotlin.coroutines.experimental.CoroutineContext
-import kotlinx.coroutines.experimental.selects.whileSelect
+import kotlinx.coroutines.experimental.selects.*
+import org.reactivestreams.*
+import kotlin.coroutines.experimental.*
 -->
 
 ```kotlin
-fun <T, U> Publisher<T>.takeUntil(context: CoroutineContext, other: Publisher<U>) = publish<T>(context) {
-    this@takeUntil.openSubscription().use { thisChannel -> // Publisher<T>のチャネルを明示的に開く
-        other.openSubscription().use { otherChannel ->     // Publisher<U>のチャネルを明示的に開く
+fun <T, U> Publisher<T>.takeUntil(context: CoroutineContext, other: Publisher<U>) = GlobalScope.publish<T>(context) {
+    this@takeUntil.openSubscription().consume { // Publisher<T>のチャネルを明示的に開く
+        val current = this
+        other.openSubscription().consume { // Publisher<U>のチャネルを明示的に開く
+            val other = this
             whileSelect {
-                otherChannel.onReceive { false }          // `other` から何か要素を受け取ったら脱出する
-                thisChannel.onReceive { send(it); true }  // thisChannelの要素を再送して続行する
+                other.onReceive { false }          // `other` から何か要素を受け取ったら脱出する
+                current.onReceive { send(it); true }  // thisChannelの要素を再送して続行する
             }
         }
     }
@@ -637,7 +638,7 @@ fun <T, U> Publisher<T>.takeUntil(context: CoroutineContext, other: Publisher<U>
 `publish` コルーチンビルダーを使用してコード化されています（純粋なRxの実装は後のセクションで説明しています）。
 
 ```kotlin
-fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: Int) = publish<Int>(context) {
+fun CoroutineScope.rangeWithInterval(time: Long, start: Int, count: Int) = publish<Int> {
     for (x in start until start + count) { 
         delay(time) // 各数値を送る前に待つ
         send(x)
@@ -649,13 +650,13 @@ fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: 
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val slowNums = rangeWithInterval(coroutineContext, 200, 1, 10)         // 200ミリ秒間隔の数列
-    val stop = rangeWithInterval(coroutineContext, 500, 1, 10)             // 最初のものは500ミリ秒後
+    val slowNums = rangeWithInterval(200, 1, 10)         // 200ミリ秒間隔の数列
+    val stop = rangeWithInterval(500, 1, 10)             // 最初のものは500ミリ秒後
     slowNums.takeUntil(coroutineContext, stop).consumeEach { println(it) } // テストしてみる
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-operators-03.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-operators-03.kt)で完全なコードを取得できます
 
 出力は、
 
@@ -675,29 +676,30 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 <!--- INCLUDE
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.reactive.*
-import org.reactivestreams.Publisher
-import kotlin.coroutines.experimental.CoroutineContext
+import org.reactivestreams.*
+import kotlin.coroutines.experimental.*
 -->
 
 ```kotlin
-fun <T> Publisher<Publisher<T>>.merge(context: CoroutineContext) = publish<T>(context) {
+fun <T> Publisher<Publisher<T>>.merge(context: CoroutineContext) = GlobalScope.publish<T>(context) {
   consumeEach { pub ->                 // ソースチャンネルから受信した各パブリッシャー
-      launch(coroutineContext) {       // 子コルーチンを起動
+      launch {  // 子コルーチンを起動
           pub.consumeEach { send(it) } // このパブリッシャーからすべての要素を再送する
       }
   }
 }
 ```
 
-注: [launch]コルーチンビルダーの呼び出しで `coroutineContext` を使用します。 [publish]ビルダーによって提供される[CoroutineScope.coroutineContext]を参照するために使用されます。
-このようにして、ここで開始されたコルーチンは `publish` コルーチンの[children](../coroutines-guide.md#children-of-a-coroutine)であり、`publish` コルーチンがキャンセルされた場合や完了した場合にキャンセルされます。
+注: [launch]コルーチンビルダーの呼び出しで[coroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines.experimental/coroutine-context.html)を使用します。
+これは、 `publish` コルーチンを囲むコンテキストを参照するために使用されます。
+このようにして、ここで開始されたコルーチンは `publish` コルーチンの[子](../coroutines-guide.md#children-of-a-coroutine)であり、`publish` コルーチンがキャンセルされた場合や完了した場合にキャンセルされます。
 さらに、親コルーチンはすべての子が完了するまで待機するので、この実装はすべての受信ストリームを完全にマージします。
 
 テストのために、前の例の `rangeWithInterval` 関数と、いくらか遅れてその結果を2回送るプロデューサーを書くことから始めましょう。
 
 <!--- INCLUDE
 
-fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: Int) = publish<Int>(context) {
+fun CoroutineScope.rangeWithInterval(time: Long, start: Int, count: Int) = publish<Int> {
     for (x in start until start + count) { 
         delay(time) // 各数値を送信する前に待つ
         send(x)
@@ -706,10 +708,10 @@ fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: 
 -->
 
 ```kotlin
-fun testPub(context: CoroutineContext) = publish<Publisher<Int>>(context) {
-    send(rangeWithInterval(context, 250, 1, 4)) // 数値 1 は 250ms, 2 は 500ms, 3 は 750ms, 4 は 1000ms 
+fun CoroutineScope.testPub() = publish<Publisher<Int>> {
+    send(rangeWithInterval(250, 1, 4)) // 数値 1 は 250ms, 2 は 500ms, 3 は 750ms, 4 は 1000ms 
     delay(100) // 100ms待つ
-    send(rangeWithInterval(context, 500, 11, 3)) // 数値 11 は 600ms, 12 は 1100ms, 13 は 1600ms
+    send(rangeWithInterval(500, 11, 3)) // 数値 11 は 600ms, 12 は 1100ms, 13 は 1600ms
     delay(1100) // 1.1秒待つ - 開始から1.2秒後に完了
 }
 ```
@@ -718,11 +720,11 @@ fun testPub(context: CoroutineContext) = publish<Publisher<Int>>(context) {
 
 ```kotlin
 fun main(args: Array<String>) = runBlocking<Unit> {
-    testPub(coroutineContext).merge(coroutineContext).consumeEach { println(it) } // ストリーム全体をプリントする
+    testPub().merge(coroutineContext).consumeEach { println(it) } // ストリーム全体をプリントする
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-operators-04.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-operators-04.kt)で完全なコードを取得できます
 
 結果は次のようになります。
 
@@ -740,7 +742,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 ## コルーチンコンテキスト
 
-前のセクションで示したすべての演算子の例には明示的な[CoroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines.experimental/-coroutine-context/)パラメータがあります。
+前のセクションで示したすべての演算子の例には明示的な[CoroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines.experimental/-coroutine-context/)パラメーターがあります。
 Rxの世界では、それはおおよそ[Scheduler](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Scheduler.html)に相当します。
 
 ### Rxのスレッド
@@ -769,7 +771,7 @@ fun main(args: Array<String>) {
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-01.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-context-01.kt)で完全なコードを取得できます
 
 `rangeWithIntervalRx` 演算子に明示的に[Schedulers.computation()](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/schedulers/Schedulers.html#computation())スケジューラーを渡しています。これはRx計算スレッドプールで実行されます。
 出力は次のようになります。
@@ -784,7 +786,7 @@ fun main(args: Array<String>) {
 
 ### コルーチンのスレッド
 
-コルーチンの世界では、 `Schedulers.computation()` は[CommonPool]にほぼ対応しているので、前の例は次の例に似ています。
+コルーチンの世界では、 `Schedulers.computation()` は[Dispatchers.Default]にほぼ対応しているので、前の例は次の例に似ています。
 
 <!--- INCLUDE
 import io.reactivex.*
@@ -794,7 +796,7 @@ import kotlin.coroutines.experimental.CoroutineContext
 -->
 
 ```kotlin
-fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: Int) = publish<Int>(context) {
+fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: Int) = GlobalScope.publish<Int>(context) {
     for (x in start until start + count) { 
         delay(time) // 各数値を送信する前に待つ
         send(x)
@@ -802,13 +804,13 @@ fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: 
 }
 
 fun main(args: Array<String>) {
-    Flowable.fromPublisher(rangeWithInterval(CommonPool, 100, 1, 3))
+    Flowable.fromPublisher(rangeWithInterval(Dispatchers.Default, 100, 1, 3))
         .subscribe { println("$it on thread ${Thread.currentThread().name}") }
     Thread.sleep(1000)
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-02.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-context-02.kt)で完全なコードを取得できます
 
 生成される出力は次のようになります。
 
@@ -820,14 +822,14 @@ fun main(args: Array<String>) {
 
 <!--- TEST LINES_START -->
 
-ここでは、独自のスケジューラーを持たず、パブリッシャーと同じスレッドで動作するRx [subscribe](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#subscribe(io.reactivex.functions.Consumer))演算子を使用しました。この例では `CommonPool` を使用しています。
+ここでは、独自のスケジューラーを持たず、パブリッシャーと同じスレッドで動作するRx [subscribe](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#subscribe(io.reactivex.functions.Consumer))演算子を使用しました。この例では デフォルトの共有スレッドプールを使用しています。
 
 ### Rx observeOn
 
 Rxでは特別な演算子を使用してチェーン内の操作のスレッドコンテキストを変更します。
 まだ慣れていない場合、それらについての[良いガイド](http://tomstechnicalblog.blogspot.ru/2016/02/rxjava-understanding-observeon-and.html)を見つけることができます。
 
-たとえば、[observeOn](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#observeOn(io.reactivex.Scheduler))演算子があります。
+例えば、[observeOn](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html#observeOn(io.reactivex.Scheduler))演算子があります。
 `Schedulers.computation()` を使ってオブザーブするために前の例を修正しましょう。
 
 <!--- INCLUDE
@@ -839,7 +841,7 @@ import kotlin.coroutines.experimental.CoroutineContext
 -->
 
 ```kotlin
-fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: Int) = publish<Int>(context) {
+fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: Int) = GlobalScope.publish<Int>(context) {
     for (x in start until start + count) { 
         delay(time) // 各数値を送信する前に待つ
         send(x)
@@ -847,14 +849,14 @@ fun rangeWithInterval(context: CoroutineContext, time: Long, start: Int, count: 
 }
 
 fun main(args: Array<String>) {
-    Flowable.fromPublisher(rangeWithInterval(CommonPool, 100, 1, 3))
+    Flowable.fromPublisher(rangeWithInterval(Dispatchers.Default, 100, 1, 3))
         .observeOn(Schedulers.computation())                           // <-- この行が追加された
         .subscribe { println("$it on thread ${Thread.currentThread().name}") }
     Thread.sleep(1000)
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-03.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-context-03.kt)で完全なコードを取得できます
 
 出力の違いは次のとおりです。"RxComputationThreadPool" に注目してください。
 
@@ -868,7 +870,7 @@ fun main(args: Array<String>) {
 
 ### すべてを制御するコルーチンコンテキスト
 
-コルーチンは、常に何らかのコンテキストで動作しています。 たとえば、[runBlocking]を使用してメインスレッドでコルーチンを開始し、Rxバージョンの `rangeWithIntervalRx` 演算子の結果をRx `subscribe` 演算子を使用するのではなく反復処理しましょう。
+コルーチンは、常に何らかのコンテキストで動作しています。 例えば、[runBlocking]を使用してメインスレッドでコルーチンを開始し、Rxバージョンの `rangeWithIntervalRx` 演算子の結果をRx `subscribe` 演算子を使用するのではなく反復処理しましょう。
 
 <!--- INCLUDE
 import io.reactivex.*
@@ -892,7 +894,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-04.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-context-04.kt)で完全なコードを取得できます
 
 結果として得られるメッセージはメインスレッドでプリントされます。
 
@@ -909,9 +911,8 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 ほとんどのRx演算子は特定のスレッド（スケジューラー）に関連付けられておらず、呼び出されたスレッドで動作します。
 [Rxのスレッド](#Rxのスレッド)セクションの `subscribe` 演算子の例で見てきました。
 
-コルーチンの世界では、[Unconfined]コンテキストも同様の役割を果たします。
-前の例を変更してみましょう。メインスレッドに限定された `runBlocking` コルーチンからソース `Flowable` を反復するのではなく、 `Unconfined` コンテキストで新しいコルーチンを起動します。メインコルーチンは[Job.join]を使用してただ完了を待つだけです。
-
+コルーチンの世界では、[Dispatchers.Unconfined]コンテキストも同様の役割を果たします。
+前の例を変更してみましょう。メインスレッドに限定された `runBlocking` コルーチンからソース `Flowable` を反復するのではなく、 `Dispatchers.Unconfined` コンテキストで新しいコルーチンを起動します。メインコルーチンは[Job.join]を使用してただ完了を待つだけです。
 
 <!--- INCLUDE
 import io.reactivex.*
@@ -930,7 +931,7 @@ fun rangeWithIntervalRx(scheduler: Scheduler, time: Long, start: Int, count: Int
         BiFunction { x, _ -> x })
 
 fun main(args: Array<String>) = runBlocking<Unit> {
-    val job = launch(Unconfined) { // Unconfinedコンテキストで新しいコルーチンを起動する（独自のスレッドプールなし）
+    val job = launch(Dispatchers.Unconfined) { // Unconfinedコンテキストで新しいコルーチンを起動する（独自のスレッドプールなし）
         rangeWithIntervalRx(Schedulers.computation(), 100, 1, 3)
             .consumeEach { println("$it on thread ${Thread.currentThread().name}") }
     }
@@ -938,7 +939,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](kotlinx-coroutines-rx2/src/test/kotlin/guide/example-reactive-context-05.kt)で完全なコードを取得できます
+> [ここ](kotlinx-coroutines-rx2/test/guide/example-reactive-context-05.kt)で完全なコードを取得できます
 
 ここで出力は、Rx `subscribe` 演算子を使用した初期の例のように、コルーチンのコードがRx計算スレッドプールで実行されていることを示しています。
 
@@ -950,10 +951,10 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 <!--- TEST LINES_START -->
 
-[Unconfined]コンテキストは注意して使用するべきです。
+[Dispatchers.Unconfined]コンテキストは注意して使用するべきです。
 操作のスタックローカリティ性の向上とスケジューリングのオーバーヘッドのために、特定のテストの全体的なパフォーマンスが向上する場合がありますが、スタックが深くなり、使用しているコードの非同期性を推測するのが難しくなります。
 
-コルーチンがチャネルに要素を送ると、[send][SendChannel.send]を呼び出したスレッドは[Unconfined]ディスパッチャーでコルーチンのコードの実行を開始することがあります。
+コルーチンがチャネルに要素を送ると、[send][SendChannel.send]を呼び出したスレッドは[Dispatchers.Unconfined]ディスパッチャーでコルーチンのコードの実行を開始することがあります。
 `send` を呼び出す元のプロデューサーコルーチンは、unconfinedのコンシューマーコルーチンが次の中断ポイントに達するまで一時停止されます。
 これは、スレッドシフト演算子がない場合のRx世界でのロックステップのシングルスレッドの `onNext` の実行と非常によく似ています。
 オペレータは通常、非常に小さなチャンクで作業をしており、複雑な処理のために多くの演算子を結合する必要があるため、これはRxの通常のデフォルトです。
@@ -963,11 +964,10 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 <!--- MODULE kotlinx-coroutines-core -->
 <!--- INDEX kotlinx.coroutines.experimental -->
 [runBlocking]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/run-blocking.html
-[Unconfined]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-unconfined/index.html
+[Dispatchers.Unconfined]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-dispatchers/-unconfined.html
 [yield]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/yield.html
 [launch]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/launch.html
-[CoroutineScope.coroutineContext]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-scope/coroutine-context.html
-[CommonPool]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-common-pool/index.html
+[Dispatchers.Default]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-dispatchers/-default.html
 [Job.join]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-job/join.html
 <!--- INDEX kotlinx.coroutines.experimental.channels -->
 [Channel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-channel/index.html
@@ -975,7 +975,7 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 [produce]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/produce.html
 [consumeEach]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/consume-each.html
 [ReceiveChannel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-receive-channel/index.html
-[SubscriptionReceiveChannel.close]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-subscription-receive-channel/close.html
+[ReceiveChannel.cancel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-receive-channel/cancel.html
 [SendChannel.send]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-send-channel/send.html
 [BroadcastChannel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-broadcast-channel/index.html
 [ConflatedBroadcastChannel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-conflated-broadcast-channel/index.html
@@ -985,12 +985,12 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 [whileSelect]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.selects/while-select.html
 <!--- MODULE kotlinx-coroutines-reactive -->
 <!--- INDEX kotlinx.coroutines.experimental.reactive -->
-[publish]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-reactive/kotlinx.coroutines.experimental.reactive/publish.html
+[publish]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-reactive/kotlinx.coroutines.experimental.reactive/kotlinx.coroutines.experimental.-coroutine-scope/publish.html
 [org.reactivestreams.Publisher.consumeEach]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-reactive/kotlinx.coroutines.experimental.reactive/org.reactivestreams.-publisher/consume-each.html
 [org.reactivestreams.Publisher.openSubscription]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-reactive/kotlinx.coroutines.experimental.reactive/org.reactivestreams.-publisher/open-subscription.html
 <!--- MODULE kotlinx-coroutines-rx2 -->
 <!--- INDEX kotlinx.coroutines.experimental.rx2 -->
-[rxFlowable]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-rx2/kotlinx.coroutines.experimental.rx2/rx-flowable.html
+[rxFlowable]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-rx2/kotlinx.coroutines.experimental.rx2/kotlinx.coroutines.experimental.-coroutine-scope/rx-flowable.html
 <!--- END -->
 
 

@@ -1,10 +1,26 @@
+/*
+ * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ */
+
 dependencies {
-    ext.lincheck_version = '1.8.1'
     testCompile "com.devexperts.lincheck:core:$lincheck_version"
+}
+
+task checkJdk16() {
+    // only fail w/o JDK_16 when actually trying to compile, not during project setup phase
+    doLast {
+        if (!System.env.JDK_16) {
+            throw new GradleException("JDK_16 environment variable is not defined. " +
+                    "Can't build against JDK 1.6 runtime and run JDK 1.6 compatibility tests. " +
+                    "Please ensure JDK 1.6 is installed and that JDK_16 points to it.")
+        }
+    }
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
     kotlinOptions.jdkHome = System.env.JDK_16
+    // only fail when actually trying to compile, not during project setup phase
+    dependsOn(checkJdk16)
 }
 
 tasks.withType(Test) {
@@ -25,15 +41,27 @@ task lockFreedomTest(type: Test, dependsOn: testClasses) {
     include '**/*LFTest.*'
 }
 
-build.dependsOn lockFreedomTest
-
-task jdk16Test(type: Test, dependsOn: testClasses) {
+task jdk16Test(type: Test, dependsOn: [testClasses, checkJdk16]) {
     executable = "$System.env.JDK_16/bin/java"
     exclude '**/*LinearizabilityTest.*'
     exclude '**/*LFTest.*'
+    exclude '**/exceptions/.*'
 }
 
-build.dependsOn jdk16Test
+task schedulerTest(type: Test, dependsOn: testClasses) {
+    systemProperty 'kotlinx.coroutines.scheduler', ''
+    systemProperty 'kotlinx.coroutines.scheduler.keep.alive.sec', '100000' // any unpark problem hangs test
+}
+
+// Always run those tests
+task moreTest(dependsOn: [lockFreedomTest])
+
+build.dependsOn moreTest
+
+// Run these tests only during nightly stress test
+task extraTest(dependsOn: [jdk16Test, schedulerTest])
+
+extraTest.onlyIf { project.properties['stressTest'] != null }
 
 task testsJar(type: Jar, dependsOn: testClasses) {
     classifier = 'tests'
