@@ -804,7 +804,7 @@ Completed in 1017 ms
 最初に `one` を開始し、次に `two` を開始し、個々のコルーチンが終了するのを待ちます。
 
 `println` で個々のコルーチンの[await][Deferred.await]を呼び出し、[start][Job.start]を省略した場合、シーケンシャルに[await][Deferred.await]コルーチンの実行を開始し、実行が終了するのを待ちます。これは、遅延の意図された使用例ではありません。
-`async(start = CoroutineStart.LAZY)' のユースケースは、値の計算にサスペンド関数が含まれる場合に標準 `lazy` 関数の代わりになります。
+`async(start = CoroutineStart.LAZY)` のユースケースは、値の計算にサスペンド関数が含まれる場合に標準 `lazy` 関数の代わりになります。
 
 ### Asyncスタイル関数
 
@@ -991,7 +991,7 @@ main runBlocking      : I'm working in thread main
 
 [Dispatchers.Unconfined]は `main` スレッドで動作しているようにも見える特別なディスパッチャですが、実際は後述する異なるメカニズムです。
 
-[GlobalScope]でコルーチンを起動するときに使用されるデフォルトのディスパッチャは、[Dispatchers.Default]で表され、共有バックグラウンド スレッドプールを使用するため、 `launch（Dispatchers.Default）{...}`は`GlobalScope.launch {...} 'と同じディスパッチャを使用します。
+[GlobalScope]でコルーチンを起動するときに使用されるデフォルトのディスパッチャは、[Dispatchers.Default]で表され、共有バックグラウンド スレッドプールを使用するため、 `launch（Dispatchers.Default）{...}` は `GlobalScope.launch {...}` と同じディスパッチャを使用します。
   
 [newSingleThreadContext]は、コルーチンを実行するための新しいスレッドを作成します。
 専用のスレッドは非常に高価なリソースです。
