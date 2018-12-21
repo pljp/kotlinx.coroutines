@@ -928,6 +928,7 @@ suspend fun failedConcurrentSum(): Int = coroutineScope {
 > [ここ](core/kotlinx-coroutines-core/test/guide/example-compose-06.kt)で完全なコードを取得できます。
 
 最初の `async` と待っている親が1つの子の失敗でどのように取り消されるかに注目してください。
+
 ```text
 Second child throws an exception
 First child was cancelled
