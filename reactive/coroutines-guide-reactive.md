@@ -21,13 +21,12 @@ class GuideReactiveTest : ReactiveTestBase() {
 # コルーチンによるリアクティブストリームのガイド
 
 このガイドでは、Kotlinコルーチンとリアクティブストリームの重要な違いについて説明し、これらを一緒に使用してより良い結果を得る方法を示します。
-[kotlinx.coroutinesのガイド](../coroutines-guide.md)でカバーされている基本的なコルーチンの概念に慣れていなくても大丈夫です。 リアクティブストリームに精通している場合は、このガイドがコルーチンの世界へのより良い導入になるかもしれません。
+[kotlinx.coroutinesのガイド](../docs/coroutines-guide.md)でカバーされている基本的なコルーチンの概念に慣れていなくても大丈夫です。 リアクティブストリームに精通している場合は、このガイドがコルーチンの世界へのより良い導入になるかもしれません。
 
 `kotlinx.coroutines` プロジェクトには、リアクティブストリームに関連するいくつかのモジュールがあります。
 
 * [kotlinx-coroutines-reactive](kotlinx-coroutines-reactive) -- [リアクティブストリーム](http://www.reactive-streams.org)のユーティリティ
 * [kotlinx-coroutines-reactor](kotlinx-coroutines-reactor) -- [Reactor](https://projectreactor.io)のユーティリティ
-* [kotlinx-coroutines-rx1](kotlinx-coroutines-rx1) -- [RxJava 1.x](https://github.com/ReactiveX/RxJava/tree/1.x)のユーティリティ
 * [kotlinx-coroutines-rx2](kotlinx-coroutines-rx2) -- [RxJava 2.x](https://github.com/ReactiveX/RxJava)のユーティリティ
 
 このガイドは主に[リアクティブストリーム](http://www.reactive-streams.org)仕様に基づいており、[RxJava 2.x](https://github.com/ReactiveX/RxJava) に基づくいくつかの例とともに `Publisher` インターフェイスを使用しています。これはリアクティブストリーム仕様を実装しています。
@@ -692,7 +691,7 @@ fun <T> Publisher<Publisher<T>>.merge(context: CoroutineContext) = GlobalScope.p
 
 注: [launch]コルーチンビルダーの呼び出しで[coroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines.experimental/coroutine-context.html)を使用します。
 これは、 `publish` コルーチンを囲むコンテキストを参照するために使用されます。
-このようにして、ここで開始されたコルーチンは `publish` コルーチンの[子](../coroutines-guide.md#children-of-a-coroutine)であり、`publish` コルーチンがキャンセルされた場合や完了した場合にキャンセルされます。
+このようにして、ここで開始されたコルーチンは `publish` コルーチンの[子](../docs/coroutines-guide.md#children-of-a-coroutine)であり、`publish` コルーチンがキャンセルされた場合や完了した場合にキャンセルされます。
 さらに、親コルーチンはすべての子が完了するまで待機するので、この実装はすべての受信ストリームを完全にマージします。
 
 テストのために、前の例の `rangeWithInterval` 関数と、いくらか遅れてその結果を2回送るプロデューサーを書くことから始めましょう。
