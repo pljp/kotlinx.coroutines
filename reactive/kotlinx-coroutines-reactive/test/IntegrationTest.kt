@@ -2,16 +2,16 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.reactive
+package kotlinx.coroutines.reactive
 
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
 import org.hamcrest.MatcherAssert.*
 import org.hamcrest.core.*
 import org.junit.*
 import org.junit.runner.*
 import org.junit.runners.*
 import org.reactivestreams.*
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 
 @RunWith(Parameterized::class)
 class IntegrationTest(
@@ -20,7 +20,7 @@ class IntegrationTest(
 ) : TestBase() {
 
     enum class Ctx {
-        MAIN        { override fun invoke(context: CoroutineContext): CoroutineContext = context },
+        MAIN        { override fun invoke(context: CoroutineContext): CoroutineContext = context.minusKey(Job) },
         DEFAULT     { override fun invoke(context: CoroutineContext): CoroutineContext = Dispatchers.Default },
         UNCONFINED  { override fun invoke(context: CoroutineContext): CoroutineContext = Dispatchers.Unconfined };
 
@@ -39,7 +39,7 @@ class IntegrationTest(
 
     @Test
     fun testEmpty(): Unit = runBlocking {
-        val pub = CoroutineScope(ctx(coroutineContext)).publish<String> {
+        val pub = publish<String>(ctx(coroutineContext)) {
             if (delay) delay(1)
             // does not send anything
         }
@@ -50,7 +50,7 @@ class IntegrationTest(
         assertNSE { pub.awaitLast() }
         assertNSE { pub.awaitSingle() }
         var cnt = 0
-        pub.consumeEach { cnt++ }
+        pub.collect { cnt++ }
         assertThat(cnt, IsEqual(0))
     }
 
@@ -67,7 +67,7 @@ class IntegrationTest(
         assertThat(pub.awaitLast(), IsEqual("OK"))
         assertThat(pub.awaitSingle(), IsEqual("OK"))
         var cnt = 0
-        pub.consumeEach {
+        pub.collect {
             assertThat(it, IsEqual("OK"))
             cnt++
         }
@@ -77,7 +77,7 @@ class IntegrationTest(
     @Test
     fun testNumbers() = runBlocking<Unit> {
         val n = 100 * stressTestMultiplier
-        val pub = CoroutineScope(ctx(coroutineContext)).publish {
+        val pub = publish(ctx(coroutineContext)) {
             for (i in 1..n) {
                 send(i)
                 if (delay) delay(1)
@@ -99,8 +99,7 @@ class IntegrationTest(
     fun testCancelWithoutValue() = runTest {
         val job = launch(Job(), start = CoroutineStart.UNDISPATCHED) {
             publish<String> {
-                yield()
-                expectUnreached()
+                hang {}
             }.awaitFirst()
         }
 
@@ -125,7 +124,7 @@ class IntegrationTest(
 
     private suspend fun checkNumbers(n: Int, pub: Publisher<Int>) {
         var last = 0
-        pub.consumeEach {
+        pub.collect {
             assertThat(it, IsEqual(++last))
         }
         assertThat(last, IsEqual(n))

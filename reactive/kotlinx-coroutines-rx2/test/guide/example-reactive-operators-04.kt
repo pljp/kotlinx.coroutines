@@ -1,19 +1,19 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 // This file was automatically generated from coroutines-guide-reactive.md by Knit tool. Do not edit.
-package kotlinx.coroutines.experimental.rx2.guide.operators04
+package kotlinx.coroutines.rx2.guide.operators04
 
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.reactive.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.reactive.*
 import org.reactivestreams.*
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 
-fun <T> Publisher<Publisher<T>>.merge(context: CoroutineContext) = GlobalScope.publish<T>(context) {
-  consumeEach { pub ->                 // for each publisher received on the source channel
+fun <T> Publisher<Publisher<T>>.merge(context: CoroutineContext) = publish<T>(context) {
+  collect { pub -> // for each publisher collected
       launch {  // launch a child coroutine
-          pub.consumeEach { send(it) } // resend all element from this publisher
+          pub.collect { send(it) } // resend all element from this publisher
       }
   }
 }
@@ -32,6 +32,6 @@ fun CoroutineScope.testPub() = publish<Publisher<Int>> {
     delay(1100) // wait for 1.1s - done in 1.2 sec after start
 }
 
-fun main(args: Array<String>) = runBlocking<Unit> {
-    testPub().merge(coroutineContext).consumeEach { println(it) } // print the whole stream
+fun main() = runBlocking<Unit> {
+    testPub().merge(Dispatchers.Unconfined).collect { println(it) } // print the whole stream
 }

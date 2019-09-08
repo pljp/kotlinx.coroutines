@@ -1,10 +1,10 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.reactive
+package kotlinx.coroutines.reactive
 
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
 import org.junit.*
 import org.reactivestreams.*
 
@@ -12,7 +12,7 @@ class PublisherBackpressureTest : TestBase() {
     @Test
     fun testCancelWhileBPSuspended() = runBlocking {
         expect(1)
-        val observable = publish {
+        val observable = publish(currentDispatcher()) {
             expect(5)
             send("A") // will not suspend, because an item was requested
             expect(7)
@@ -21,7 +21,7 @@ class PublisherBackpressureTest : TestBase() {
             try {
                 send("C") // will suspend (no more requested)
             } finally {
-                expect(13)
+                expect(12)
             }
             expectUnreached()
         }
@@ -43,7 +43,7 @@ class PublisherBackpressureTest : TestBase() {
             }
 
             override fun onComplete() {
-                expect(11)
+                expectUnreached()
             }
 
             override fun onError(e: Throwable) {
@@ -53,9 +53,9 @@ class PublisherBackpressureTest : TestBase() {
         expect(4)
         yield() // yield to observable coroutine
         expect(10)
-        sub!!.cancel() // now unsubscribe -- shall cancel coroutine & immediately signal onComplete
-        expect(12)
-        yield() // shall perform finally in coroutine & report onComplete
-        finish(14)
+        sub!!.cancel() // now unsubscribe -- shall cancel coroutine (& do not signal)
+        expect(11)
+        yield() // shall perform finally in coroutine
+        finish(13)
     }
 }

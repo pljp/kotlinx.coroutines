@@ -1,13 +1,13 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 // This file was automatically generated from coroutines-guide-ui.md by Knit tool. Do not edit.
-package kotlinx.coroutines.experimental.javafx.guide.basic03
+package kotlinx.coroutines.javafx.guide.basic03
 
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.*
-import kotlinx.coroutines.experimental.javafx.JavaFx as Main
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.javafx.JavaFx as Main
 import javafx.application.Application
 import javafx.event.EventHandler
 import javafx.geometry.*

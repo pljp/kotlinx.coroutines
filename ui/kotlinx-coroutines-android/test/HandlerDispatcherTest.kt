@@ -2,10 +2,10 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.android
+package kotlinx.coroutines.android
 
 import android.os.*
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
 import org.junit.Test
 import org.junit.runner.*
 import org.robolectric.*
@@ -116,6 +116,15 @@ class HandlerDispatcherTest : TestBase() {
         val message = mainMessageQueue.head
         assertFalse(message.isAsynchronous)
         job.join(mainLooper)
+    }
+
+    @Test
+    fun testToString() {
+        ReflectionHelpers.setStaticField(Build.VERSION::class.java, "SDK_INT", 28)
+        val main = Looper.getMainLooper().asHandler(async = true).asCoroutineDispatcher("testName")
+        assertEquals("testName", main.toString())
+        assertEquals("testName [immediate]", main.immediate.toString())
+        assertEquals("testName [immediate]", main.immediate.immediate.toString())
     }
 
     private suspend fun Job.join(mainLooper: ShadowLooper) {

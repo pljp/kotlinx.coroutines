@@ -1,24 +1,22 @@
 <!--- INCLUDE .*/example-([a-z]+)-([0-9a-z]+)\.kt 
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 // This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.experimental.guide.$$1$$2
-
-import kotlinx.coroutines.experimental.*
+package kotlinx.coroutines.guide.$$1$$2
 -->
-<!--- KNIT     ../core/kotlinx-coroutines-core/test/guide/.*\.kt -->
-<!--- TEST_OUT ../core/kotlinx-coroutines-core/test/guide/test/BasicsGuideTest.kt
+<!--- KNIT     ../kotlinx-coroutines-core/jvm/test/guide/.*\.kt -->
+<!--- TEST_OUT ../kotlinx-coroutines-core/jvm/test/guide/test/BasicsGuideTest.kt
 // This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.experimental.guide.test
+package kotlinx.coroutines.guide.test
 
 import org.junit.Test
 
 class BasicsGuideTest {
 --> 
 
-## 目次
+**目次**
 
 <!--- TOC -->
 
@@ -26,7 +24,7 @@ class BasicsGuideTest {
   * [初めてのコルーチン](#初めてのコルーチン)
   * [ブロッキングとノンブロッキングの世界の橋渡し](#ブロッキングとノンブロッキングの世界の橋渡し)
   * [ジョブを待つ](#ジョブを待つ)
-  * [構造化同時実行性](#構造化同時実行性)
+  * [構造化並行性](#構造化並行性)
   * [スコープビルダー](#スコープビルダー)
   * [関数抽出リファクタリング](#関数抽出リファクタリング)
   * [コルーチンは軽量](#コルーチンは軽量)
@@ -42,8 +40,12 @@ class BasicsGuideTest {
 
 次のコードを実行します。
 
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
 ```kotlin
-fun main(args: Array<String>) {
+import kotlinx.coroutines.*
+
+fun main() {
     GlobalScope.launch { // バックグラウンドで新しいコルーチンを起動し、続行する
         delay(1000L) // 1秒間ノンブロッキング遅延 (デフォルトの時間単位はms)
         println("World!") // delayのあとでプリント
@@ -53,9 +55,11 @@ fun main(args: Array<String>) {
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-basic-01.kt)で完全なコードを取得できます。
+</div>
 
-このコードを実行します。
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-basic-01.kt)で完全なコードを取得できます。
+
+次の結果が表示されます。
 
 ```text
 Hello,
@@ -81,11 +85,15 @@ Error: Kotlin: サスペンド関数は、コルーチンまたは他のサス�
 ### ブロッキングとノンブロッキングの世界の橋渡し
 
 最初の例では、 同じコードに _ノンブロッキング_ `delay(...)` と _ブロッキング_ `Thread.sleep(...)` を混在させています。
-ある方はブロックされていて、もう一方はブロックしていませんので迷子になるのは簡単です。
+これではどちらがブロックされていて、どちらがブロックされていないかを簡単に見失います。
 [runBlocking]コルーチンビルダーを使用して、ブロッキングを明確にしましょう。
 
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
 ```kotlin
-fun main(args: Array<String>) { 
+import kotlinx.coroutines.*
+
+fun main() { 
     GlobalScope.launch { // バックグラウンドで新しいコルーチンを起動し、続行する
         delay(1000L)
         println("World!")
@@ -97,7 +105,9 @@ fun main(args: Array<String>) {
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-basic-02.kt)で完全なコードを取得できます。
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-basic-02.kt)で完全なコードを取得できます。
 
 <!--- TEST
 Hello,
@@ -105,12 +115,16 @@ World!
 -->
 
 結果は同じですが、このコードではノンブロッキング[delay]のみを使用しています。
-`runBlocking` を呼び出すメインスレッドは、`runBlocking` 内部のコルーチンが完了するまで _ブロック_ します。
+`runBlocking` を呼び出すメインスレッドは、`runBlocking` 内のコルーチンが完了するまで _ブロック_ します。
 
 この例は、 `runBlocking` を使ってmain関数の実行をラップすることにより、より慣用的な方法で書き直すこともできます：
 
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> { // メインコルーチンを開始
+import kotlinx.coroutines.*
+
+fun main() = runBlocking<Unit> { // メインコルーチンを開始
     GlobalScope.launch { // バックグラウンドで新しいコルーチンを起動し、続行する
         delay(1000L)
         println("World!")
@@ -120,7 +134,9 @@ fun main(args: Array<String>) = runBlocking<Unit> { // メインコルーチン�
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-basic-02b.kt)で完全なコードを取得できます。
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-basic-02b.kt)で完全なコードを取得できます。
 
 <!--- TEST
 Hello,
@@ -131,6 +147,12 @@ World!
 Kotlinの適格な `main` 関数は `Unit` を返さなければならないので、リターンタイプ `Unit` を明示的に指定します。
 
 これはまた、サスペンド関数の単体テストを書く方法でもあります。
+
+<!--- INCLUDE
+import kotlinx.coroutines.*
+-->
+
+<div class="sample" markdown="1" theme="idea" data-highlight-only>
  
 ```kotlin
 class MyTest {
@@ -141,6 +163,8 @@ class MyTest {
 }
 ```
 
+</div>
+
 <!--- CLEAR -->
  
 ### ジョブを待つ
@@ -148,18 +172,26 @@ class MyTest {
 別のコルーチンが動作している間遅延させるのは良い方法ではありません。
 立ち上げたバックグラウンド[Job]が完了するまで明示的に（ノンブロッキングの方法で）待ちましょう。
 
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
+import kotlinx.coroutines.*
+
+fun main() = runBlocking<Unit> {
+//sampleStart
     val job = GlobalScope.launch { // 新しいコルーチンを起動し、そのJobへの参照を保持する
         delay(1000L)
         println("World!")
     }
     println("Hello,")
     job.join() // 子コルーチンが完了するまで待つ
+//sampleEnd    
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-basic-03.kt)で完全なコードを取得できます。
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-basic-03.kt)で完全なコードを取得できます。
 
 <!--- TEST
 Hello,
@@ -168,22 +200,26 @@ World!
 
 結果は変わりませんが、メインコルーチンのコードはバックグラウンドジョブの継続時間に結びついていません。ずっと良いです。
 
-### 構造化同時実行性
+### 構造化並行性
 
-コルーチンの実用化には依然として何かが必要です。
-`GlobalScope.launch` を使うと、トップレベルのコルーチンが作成されます。 軽量であるにもかかわらず、実行中にいくつかのメモリリソースを消費します。 新しく起動したコルーチンへの参照の保持を忘れたとしても、まだ実行されています。 もしコルーチンのコードがハングして（例えば、長すぎる誤った遅延）、多くのコルーチンを起動しすぎてメモリが足りなくなった場合はどうなりますか？
-起動されたすべてのコルーチンへの参照を手動で保持し、[Join][Job.join]するとエラーが発生しやすくなります。
+コルーチンを実際に使用するには、まだ何かが必要です。
+`GlobalScope.launch` を使うと、トップレベルのコルーチンが作成されます。 軽量であるにもかかわらず、実行中にいくらかのメモリリソースを消費します。 新しく起動したコルーチンへの参照の保持を忘れたとしても、まだ実行されています。 もしコルーチンのコードがハングして（例えば、長すぎる誤った遅延）、多くのコルーチンを起動しすぎてメモリが足りなくなった場合はどうなりますか？
+起動されたすべてのコルーチンへの参照を手動で保持し、[Join][Job.join]する必要があるとエラーが発生しやすくなります。
 
-より良い解決策があります。私たちのコードでは、構造化された並列処理を使用できます。
+より良い解決策があります。私たちのコードでは、構造化並行性を使用できます。
 [GlobalScope]でコルーチンを起動するのではなく、通常はスレッド（スレッドは常にグローバル）と同様に、実行中の操作の特定の範囲でコルーチンを起動することができます。
 
 この例では、[runBlocking]コルーチンビルダーを使用してコルーチンに変換される `main` 関数があります。
 `runBlocking` を含むすべてのコルーチンビルダーは、そのコードブロックのスコープに[CoroutineScope]のインスタンスを追加します。
 スコープで起動されたコルーチンがすべて完了するまで外部コルーチン（この例では `runBlocking`）が完了しないため、明示的に `join` せずにこのスコープでコルーチンを起動することができます。
-したがって、例を簡単にすることができます：
+したがって、例を簡単にすることができます。
+
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
 
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> { // this: CoroutineScope
+import kotlinx.coroutines.*
+
+fun main() = runBlocking<Unit> { // this: CoroutineScope
     launch { // runBlockingのスコープで新しいコルーチンを起動
         delay(1000L)
         println("World!")
@@ -192,7 +228,9 @@ fun main(args: Array<String>) = runBlocking<Unit> { // this: CoroutineScope
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-basic-03s.kt)で完全なコードを取得できます。
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-basic-03s.kt)で完全なコードを取得できます。
 
 <!--- TEST
 Hello,
@@ -201,17 +239,21 @@ World!
 
 ### スコープビルダー
 異なるビルダーが提供するコルーチンのスコープに加えて、[coroutineScope]ビルダーを使用して独自のスコープを宣言することも可能です。
-これは新しいコルーチン範囲を作成し、起動したすべての子が完了するまで完了しません。
+これはコルーチンスコープを作成し、起動したすべての子が完了するまで完了しません。
 [runBlocking]と[coroutineScope]の主な違いは、後者はすべての子が完了するのを待つ間、現在のスレッドをブロックしないことです。
 
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> { // this: CoroutineScope
+import kotlinx.coroutines.*
+
+fun main() = runBlocking { // this: CoroutineScope
     launch { 
         delay(200L)
         println("Task from runBlocking")
     }
     
-    coroutineScope { // 新しいコルーチンスコープを作る
+    coroutineScope { // コルーチンスコープを作る
         launch {
             delay(500L) 
             println("Task from nested launch")
@@ -225,7 +267,9 @@ fun main(args: Array<String>) = runBlocking<Unit> { // this: CoroutineScope
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-basic-04.kt)で完全なコードを取得できます。
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-basic-04.kt)で完全なコードを取得できます。
 
 <!--- TEST
 Task from coroutine scope
@@ -241,8 +285,12 @@ Coroutine scope is over
 それがあなたの最初の _サスペンド関数_ です。
 サスペンド関数は、通常の関数と同様にコルーチン内で使用できますが、追加機能として、この例では `delay`のような他のサスペンド関数を使用してコルーチンの実行を _中断_ することができます。
 
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
+import kotlinx.coroutines.*
+
+fun main() = runBlocking {
     launch { doWorld() }
     println("Hello,")
 }
@@ -254,45 +302,33 @@ suspend fun doWorld() {
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-basic-05.kt)で完全なコードを取得できます
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-basic-05.kt)で完全なコードを取得できます
 
 <!--- TEST
 Hello,
 World!
 -->
+
 
 しかし、抽出された関数に現在のスコープで呼び出されるコルーチンビルダーが含まれているとしたらどうでしょうか？
 この場合、抽出された関数の `suspend` 修飾子では不十分です。
-`CoroutineScope` 上で `doWorld` 拡張メソッドを作ることは解決策の1つですが、APIをより明確にしないので、必ずしも適用可能とは限りません。
-[currentScope]ビルダーが助けになります。それが呼び出されるコルーチンのコンテキストから現在の[CoroutineScope]を継承します。
-
-```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
-    launchDoWorld()
-    println("Hello,")
-}
-
-// これはあなたの最初のサスペンド関数
-suspend fun launchDoWorld() = currentScope {
-    launch {
-        println("World!")
-    }
-}
-```
-
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-basic-05s.kt)で完全なコードを取得できます。
-
-<!--- TEST
-Hello,
-World!
--->
+`doWorld` を `CoroutineScope` の拡張メソッドにすることは解決策の1つですが、APIが明確にならないので、常に適用できるとは限りません。
+慣用的な解決策は、ターゲット関数を含むクラスのフィールドとして明示的な `CoroutineScope` を使用するか、外部クラスが `CoroutineScope` を実装するときに暗黙的なフィールドを使用することです。
+最後の手段として、[CoroutineScope(coroutineContext)][CoroutineScope()]を使用できますが、このメソッドの実行範囲を制御できないため、このようなアプローチは構造的に安全ではありません。
+このビルダーを使用できるのはプライベートAPIのみです。
 
 ### コルーチンは軽量
 
 次のコードを実行します。
 
+<div class="sample" markdown="1" theme="idea" data-highlight-only>
+
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
+import kotlinx.coroutines.*
+
+fun main() = runBlocking {
     repeat(100_000) { // たくさんのコルーチンを起動する
         launch {
             delay(1000L)
@@ -303,7 +339,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-basic-06.kt)で完全なコードを取得できます
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-basic-06.kt)で完全なコードを取得できます
 
 <!--- TEST lines.size == 1 && lines[0] == ".".repeat(100_000) -->
 
@@ -314,8 +352,13 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 次のコードでは、「I'm sleeping」というメッセージを毎秒2回プリントする長時間実行するコルーチンを[GlobalScope]で起動し、ある程度遅れてmain関数からリターンします。
 
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
+import kotlinx.coroutines.*
+
+fun main() = runBlocking {
+//sampleStart
     GlobalScope.launch {
         repeat(1000) { i ->
             println("I'm sleeping $i ...")
@@ -323,10 +366,13 @@ fun main(args: Array<String>) = runBlocking<Unit> {
         }
     }
     delay(1300L) // 遅れて終了する
+//sampleEnd    
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-basic-07.kt)で完全なコードを取得できます
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-basic-07.kt)で完全なコードを取得できます
 
 実行すると、3行を出力して終了することがわかります。
 
@@ -339,3 +385,18 @@ I'm sleeping 2 ...
 <!--- TEST -->
 
 [GlobalScope]で起動されたアクティブなコルーチンはプロセスを生かし続けるわけではありません。それらはデーモンスレッドのようなものです。
+
+<!--- MODULE kotlinx-coroutines-core -->
+<!--- INDEX kotlinx.coroutines -->
+[launch]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/launch.html
+[CoroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope/index.html
+[GlobalScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-global-scope/index.html
+[delay]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/delay.html
+[runBlocking]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/run-blocking.html
+[Job]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/index.html
+[Job.join]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/join.html
+[coroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/coroutine-scope.html
+[CoroutineScope()]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope.html
+<!--- END -->
+
+

@@ -2,14 +2,16 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.reactive
+package kotlinx.coroutines.reactive
 
-import kotlinx.coroutines.experimental.CancellationException
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.suspendCancellableCoroutine
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.suspendCancellableCoroutine
 import org.reactivestreams.Publisher
 import org.reactivestreams.Subscriber
 import org.reactivestreams.Subscription
+import java.util.*
+import kotlin.coroutines.*
 
 /**
  * Awaits for the first value from the given publisher without blocking a thread and
@@ -80,6 +82,16 @@ public suspend fun <T> Publisher<T>.awaitSingle(): T = awaitOne(Mode.SINGLE)
 
 // ------------------------ private ------------------------
 
+// ContextInjector service is implemented in `kotlinx-coroutines-reactor` module only.
+// If `kotlinx-coroutines-reactor` module is not included, the list is empty.
+private val contextInjectors: Array<ContextInjector> =
+    ServiceLoader.load(ContextInjector::class.java, ContextInjector::class.java.classLoader).iterator().asSequence().toList().toTypedArray() // R8 opto
+
+private fun <T> Publisher<T>.injectCoroutineContext(coroutineContext: CoroutineContext) =
+    contextInjectors.fold(this) { pub, contextInjector ->
+        contextInjector.injectCoroutineContext(pub, coroutineContext)
+    }
+
 private enum class Mode(val s: String) {
     FIRST("awaitFirst"),
     FIRST_OR_DEFAULT("awaitFirstOrDefault"),
@@ -92,7 +104,7 @@ private suspend fun <T> Publisher<T>.awaitOne(
     mode: Mode,
     default: T? = null
 ): T = suspendCancellableCoroutine { cont ->
-    subscribe(object : Subscriber<T> {
+    injectCoroutineContext(cont.context).subscribe(object : Subscriber<T> {
         private lateinit var subscription: Subscription
         private var value: T? = null
         private var seenValue = false
@@ -116,7 +128,7 @@ private suspend fun <T> Publisher<T>.awaitOne(
                     if (mode == Mode.SINGLE && seenValue) {
                         subscription.cancel()
                         if (cont.isActive)
-                            cont.resumeWithException(IllegalArgumentException("More that one onNext value for $mode"))
+                            cont.resumeWithException(IllegalArgumentException("More than one onNext value for $mode"))
                     } else {
                         value = t
                         seenValue = true

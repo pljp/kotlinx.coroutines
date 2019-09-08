@@ -2,12 +2,12 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.rx2
+package kotlinx.coroutines.rx2
 
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
 import org.junit.*
 import java.util.*
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 
 class ObservableCompletionStressTest : TestBase() {
     private val N_REPEATS = 10_000 * stressTestMultiplier
@@ -24,7 +24,7 @@ class ObservableCompletionStressTest : TestBase() {
             runBlocking {
                 withTimeout(5000) {
                     var received = 0
-                    range(Dispatchers.Default, 1, count).consumeEach { x ->
+                    range(Dispatchers.Default, 1, count).collect { x ->
                         received++
                         if (x != received) error("$x != $received")
                     }

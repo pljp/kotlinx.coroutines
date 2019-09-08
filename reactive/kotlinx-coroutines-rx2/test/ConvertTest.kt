@@ -1,24 +1,22 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.rx2
+package kotlinx.coroutines.rx2
 
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
 import org.junit.*
 import org.junit.Assert.*
 
 class ConvertTest : TestBase() {
-    class TestException(s: String): RuntimeException(s)
-
     @Test
     fun testToCompletableSuccess() = runBlocking {
         expect(1)
         val job = launch {
             expect(3)
         }
-        val completable = job.asCompletable(coroutineContext)
+        val completable = job.asCompletable(coroutineContext.minusKey(Job))
         completable.subscribe {
             expect(4)
         }
@@ -34,7 +32,7 @@ class ConvertTest : TestBase() {
             expect(3)
             throw RuntimeException("OK")
         }
-        val completable = job.asCompletable(coroutineContext)
+        val completable = job.asCompletable(coroutineContext.minusKey(Job))
         completable.subscribe {
             expect(4)
         }
@@ -75,15 +73,15 @@ class ConvertTest : TestBase() {
     fun testToMaybeFail() {
         val d = GlobalScope.async {
             delay(50)
-            throw TestException("OK")
+            throw TestRuntimeException("OK")
         }
         val maybe1 = d.asMaybe(Dispatchers.Unconfined)
         checkErroneous(maybe1) {
-            check(it is TestException && it.message == "OK") { "$it" }
+            check(it is TestRuntimeException && it.message == "OK") { "$it" }
         }
         val maybe2 = d.asMaybe(Dispatchers.Unconfined)
         checkErroneous(maybe2) {
-            check(it is TestException && it.message == "OK") { "$it" }
+            check(it is TestRuntimeException && it.message == "OK") { "$it" }
         }
     }
 
@@ -107,15 +105,15 @@ class ConvertTest : TestBase() {
     fun testToSingleFail() {
         val d = GlobalScope.async {
             delay(50)
-            throw TestException("OK")
+            throw TestRuntimeException("OK")
         }
         val single1 = d.asSingle(Dispatchers.Unconfined)
         checkErroneous(single1) {
-            check(it is TestException && it.message == "OK") { "$it" }
+            check(it is TestRuntimeException && it.message == "OK") { "$it" }
         }
         val single2 = d.asSingle(Dispatchers.Unconfined)
         checkErroneous(single2) {
-            check(it is TestException && it.message == "OK") { "$it" }
+            check(it is TestRuntimeException && it.message == "OK") { "$it" }
         }
     }
 
@@ -142,10 +140,10 @@ class ConvertTest : TestBase() {
             throw TestException("K")
         }
         val observable = c.asObservable(Dispatchers.Unconfined)
-        val single = GlobalScope.rxSingle(Dispatchers.Unconfined) {
+        val single = rxSingle(Dispatchers.Unconfined) {
             var result = ""
             try {
-                observable.consumeEach { result += it }
+                observable.collect { result += it }
             } catch(e: Throwable) {
                 check(e is TestException)
                 result += e.message

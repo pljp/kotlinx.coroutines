@@ -1,14 +1,17 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.rx2
+@file:Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER")
+
+package kotlinx.coroutines.rx2
 
 import io.reactivex.*
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.*
-import kotlinx.coroutines.experimental.reactive.*
-import kotlin.coroutines.experimental.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.reactive.*
+import kotlin.coroutines.*
+import kotlin.internal.*
 
 /**
  * Creates cold [flowable][Flowable] that will run a given [block] in a coroutine.
@@ -24,30 +27,29 @@ import kotlin.coroutines.experimental.*
  * | Normal completion or `close` without cause   | `onComplete`
  * | Failure with exception or `close` with cause | `onError`
  *
- * Coroutine context is inherited from a [CoroutineScope], additional context elements can be specified with [context] argument.
+ * Coroutine context can be specified with [context] argument.
  * If the context does not have any dispatcher nor any other [ContinuationInterceptor], then [Dispatchers.Default] is used.
- * The parent job is inherited from a [CoroutineScope] as well, but it can also be overridden
- * with corresponding [coroutineContext] element.
+ * Method throws [IllegalArgumentException] if provided [context] contains a [Job] instance.
  *
- * @param context context of the coroutine.
- * @param block the coroutine code.
+ * **Note: This is an experimental api.** Behaviour of publishers that work as children in a parent scope with respect
  */
-public fun <T> CoroutineScope.rxFlowable(
+@ExperimentalCoroutinesApi
+public fun <T: Any> rxFlowable(
     context: CoroutineContext = EmptyCoroutineContext,
-    block: suspend ProducerScope<T>.() -> Unit
-): Flowable<T> = Flowable.fromPublisher(publish(newCoroutineContext(context), block = block))
+    @BuilderInference block: suspend ProducerScope<T>.() -> Unit
+): Flowable<T> {
+    require(context[Job] === null) { "Flowable context cannot contain job in it." +
+            "Its lifecycle should be managed via Disposable handle. Had $context" }
+    return Flowable.fromPublisher(publishInternal(GlobalScope, context, block))
+}
 
-/**
- * Creates cold [flowable][Flowable] that will run a given [block] in a coroutine.
- * @suppress **Deprecated** Use [CoroutineScope.rxFlowable] instead.
- */
 @Deprecated(
-    message = "Standalone coroutine builders are deprecated, use extensions on CoroutineScope instead",
-    replaceWith = ReplaceWith("GlobalScope.rxFlowable(context, block)",
-        imports = ["kotlinx.coroutines.experimental.GlobalScope", "kotlinx.coroutines.experimental.rx2.rxFlowable"])
-)
-@JvmOverloads // for binary compatibility with older code compiled before context had a default
-public fun <T> rxFlowable(
-    context: CoroutineContext = Dispatchers.Default,
-    block: suspend ProducerScope<T>.() -> Unit
-): Flowable<T> = GlobalScope.rxFlowable(context, block)
+    message = "CoroutineScope.rxFlowable is deprecated in favour of top-level rxFlowable",
+    level = DeprecationLevel.WARNING,
+    replaceWith = ReplaceWith("rxFlowable(context, block)")
+) // Since 1.3.0, will be error in 1.3.1 and hidden in 1.4.0
+@LowPriorityInOverloadResolution
+public fun <T: Any> CoroutineScope.rxFlowable(
+    context: CoroutineContext = EmptyCoroutineContext,
+    @BuilderInference block: suspend ProducerScope<T>.() -> Unit
+): Flowable<T> = Flowable.fromPublisher(publishInternal(this, context, block))

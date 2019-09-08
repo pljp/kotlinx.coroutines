@@ -13,7 +13,7 @@ Extension functions:
 | **Name** | **Description**
 | -------- | ---------------
 | [ListenableFuture.await][com.google.common.util.concurrent.ListenableFuture.await] | Awaits for completion of the future (cancellable)
-| [Deferred.asListenableFuture][kotlinx.coroutines.experimental.Deferred.asListenableFuture] | Converts a deferred value to the future
+| [Deferred.asListenableFuture][kotlinx.coroutines.Deferred.asListenableFuture] | Converts a deferred value to the future
 
 ## Example
 
@@ -35,7 +35,7 @@ fun combineImagesAsync(name1: String, name2: String): ListenableFuture<Image> = 
 }
 ```
 
-Note, that this module should be used only for integration with existing Java APIs based on `ListenableFuture`. 
+Note that this module should be used only for integration with existing Java APIs based on `ListenableFuture`. 
 Writing pure-Kotlin code that uses `ListenableFuture` is highly not recommended, since the resulting APIs based
 on the futures are quite error-prone. See the discussion on 
 [Asynchronous Programming Styles](https://github.com/Kotlin/kotlin-coroutines/blob/master/kotlin-coroutines-informal.md#asynchronous-programming-styles)
@@ -44,17 +44,17 @@ a _blocking_ method
 [get](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Future.html#get--) 
 that makes it especially bad choice for coroutine-based Kotlin code.
 
-# Package kotlinx.coroutines.experimental.future
+# Package kotlinx.coroutines.future
 
 Integration with Guava [ListenableFuture](https://github.com/google/guava/wiki/ListenableFutureExplained).
 
 <!--- MODULE kotlinx-coroutines-core -->
-<!--- INDEX kotlinx.coroutines.experimental -->
-[CoroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-scope/index.html
+<!--- INDEX kotlinx.coroutines -->
+[CoroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope/index.html
 <!--- MODULE kotlinx-coroutines-guava -->
-<!--- INDEX kotlinx.coroutines.experimental.guava -->
-[future]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-guava/kotlinx.coroutines.experimental.guava/kotlinx.coroutines.experimental.-coroutine-scope/future.html
-[com.google.common.util.concurrent.ListenableFuture]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-guava/kotlinx.coroutines.experimental.guava/com.google.common.util.concurrent.-listenable-future/index.html
-[com.google.common.util.concurrent.ListenableFuture.await]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-guava/kotlinx.coroutines.experimental.guava/com.google.common.util.concurrent.-listenable-future/await.html
-[kotlinx.coroutines.experimental.Deferred.asListenableFuture]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-guava/kotlinx.coroutines.experimental.guava/kotlinx.coroutines.experimental.-deferred/as-listenable-future.html
+<!--- INDEX kotlinx.coroutines.guava -->
+[future]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-guava/kotlinx.coroutines.guava/kotlinx.coroutines.-coroutine-scope/future.html
+[com.google.common.util.concurrent.ListenableFuture]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-guava/kotlinx.coroutines.guava/com.google.common.util.concurrent.-listenable-future/index.html
+[com.google.common.util.concurrent.ListenableFuture.await]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-guava/kotlinx.coroutines.guava/com.google.common.util.concurrent.-listenable-future/await.html
+[kotlinx.coroutines.Deferred.asListenableFuture]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-guava/kotlinx.coroutines.guava/kotlinx.coroutines.-deferred/as-listenable-future.html
 <!--- END -->

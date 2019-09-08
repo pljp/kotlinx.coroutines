@@ -1,17 +1,20 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.rx2
+@file:Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER")
+
+package kotlinx.coroutines.rx2
 
 import io.reactivex.*
-import io.reactivex.functions.*
+import io.reactivex.exceptions.*
 import kotlinx.atomicfu.*
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.*
-import kotlinx.coroutines.experimental.selects.*
-import kotlinx.coroutines.experimental.sync.*
-import kotlin.coroutines.experimental.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.selects.*
+import kotlinx.coroutines.sync.*
+import kotlin.coroutines.*
+import kotlin.internal.*
 
 /**
  * Creates cold [observable][Observable] that will run a given [block] in a coroutine.
@@ -19,7 +22,7 @@ import kotlin.coroutines.experimental.*
  * Coroutine emits items with `send`. Unsubscribing cancels running coroutine.
  *
  * Invocations of `send` are suspended appropriately to ensure that `onNext` is not invoked concurrently.
- * Note, that Rx 2.x [Observable] **does not support backpressure**. Use [rxFlowable].
+ * Note that Rx 2.x [Observable] **does not support backpressure**. Use [rxFlowable].
  *
  * | **Coroutine action**                         | **Signal to subscriber**
  * | -------------------------------------------- | ------------------------
@@ -27,47 +30,50 @@ import kotlin.coroutines.experimental.*
  * | Normal completion or `close` without cause   | `onComplete`
  * | Failure with exception or `close` with cause | `onError`
  *
- * Coroutine context is inherited from a [CoroutineScope], additional context elements can be specified with [context] argument.
+ * Coroutine context can be specified with [context] argument.
  * If the context does not have any dispatcher nor any other [ContinuationInterceptor], then [Dispatchers.Default] is used.
- * The parent job is inherited from a [CoroutineScope] as well, but it can also be overridden
- * with corresponding [coroutineContext] element.
- *
- * @param context context of the coroutine.
- * @param block the coroutine code.
+ * Method throws [IllegalArgumentException] if provided [context] contains a [Job] instance.
  */
-public fun <T> CoroutineScope.rxObservable(
+@ExperimentalCoroutinesApi
+public fun <T : Any> rxObservable(
     context: CoroutineContext = EmptyCoroutineContext,
-    block: suspend ProducerScope<T>.() -> Unit
-): Observable<T> = Observable.create { subscriber ->
-    val newContext = newCoroutineContext(context)
-    val coroutine = RxObservableCoroutine(newContext, subscriber)
-    subscriber.setCancellable(coroutine) // do it first (before starting coroutine), to await unnecessary suspensions
-    coroutine.start(CoroutineStart.DEFAULT, coroutine, block)
+    @BuilderInference block: suspend ProducerScope<T>.() -> Unit
+): Observable<T> {
+    require(context[Job] === null) { "Observable context cannot contain job in it." +
+            "Its lifecycle should be managed via Disposable handle. Had $context" }
+    return rxObservableInternal(GlobalScope, context, block)
 }
 
-/**
- * Creates cold [observable][Observable] that will run a given [block] in a coroutine.
- * @suppress **Deprecated** Use [CoroutineScope.rxObservable] instead.
- */
 @Deprecated(
-    message = "Standalone coroutine builders are deprecated, use extensions on CoroutineScope instead",
-    replaceWith = ReplaceWith("GlobalScope.rxObservable(context, block)",
-        imports = ["kotlinx.coroutines.experimental.GlobalScope", "kotlinx.coroutines.experimental.rx2.rxObservable"])
-)
-public fun <T> rxObservable(
-    context: CoroutineContext = Dispatchers.Default,
-    parent: Job? = null,
+    message = "CoroutineScope.rxObservable is deprecated in favour of top-level rxObservable",
+    level = DeprecationLevel.WARNING,
+    replaceWith = ReplaceWith("rxObservable(context, block)")
+) // Since 1.3.0, will be error in 1.3.1 and hidden in 1.4.0
+@LowPriorityInOverloadResolution
+public fun <T : Any> CoroutineScope.rxObservable(
+    context: CoroutineContext = EmptyCoroutineContext,
+    @BuilderInference block: suspend ProducerScope<T>.() -> Unit
+): Observable<T> = rxObservableInternal(this, context, block)
+
+private fun <T : Any> rxObservableInternal(
+    scope: CoroutineScope, // support for legacy rxObservable in scope
+    context: CoroutineContext,
     block: suspend ProducerScope<T>.() -> Unit
-): Observable<T> = GlobalScope.rxObservable(context + (parent ?: EmptyCoroutineContext), block)
+): Observable<T> = Observable.create { subscriber ->
+    val newContext = scope.newCoroutineContext(context)
+    val coroutine = RxObservableCoroutine(newContext, subscriber)
+    subscriber.setCancellable(RxCancellable(coroutine)) // do it first (before starting coroutine), to await unnecessary suspensions
+    coroutine.start(CoroutineStart.DEFAULT, coroutine, block)
+}
 
 private const val OPEN = 0        // open channel, still working
 private const val CLOSED = -1     // closed, but have not signalled onCompleted/onError yet
 private const val SIGNALLED = -2  // already signalled subscriber onCompleted/onError
 
-private class RxObservableCoroutine<T>(
+private class RxObservableCoroutine<T: Any>(
     parentContext: CoroutineContext,
     private val subscriber: ObservableEmitter<T>
-) : AbstractCoroutine<Unit>(parentContext, true), ProducerScope<T>, Cancellable, SelectClause2<T, SendChannel<T>> {
+) : AbstractCoroutine<Unit>(parentContext, true), ProducerScope<T>, SelectClause2<T, SendChannel<T>> {
     override val channel: SendChannel<T> get() = this
 
     // Mutex is locked when while subscriber.onXXX is being invoked
@@ -77,7 +83,7 @@ private class RxObservableCoroutine<T>(
 
     override val isClosedForSend: Boolean get() = isCompleted
     override val isFull: Boolean = mutex.isLocked
-    override fun close(cause: Throwable?): Boolean = cancel(cause)
+    override fun close(cause: Throwable?): Boolean = cancelCoroutine(cause)
     override fun invokeOnClose(handler: (Throwable?) -> Unit) =
         throw UnsupportedOperationException("RxObservableCoroutine doesn't support invokeOnClose")
 
@@ -115,46 +121,66 @@ private class RxObservableCoroutine<T>(
     private fun doLockedNext(elem: T) {
         // check if already closed for send
         if (!isActive) {
-            doLockedSignalCompleted()
+            doLockedSignalCompleted(completionCause, completionCauseHandled)
             throw getCancellationException()
         }
         // notify subscriber
         try {
             subscriber.onNext(elem)
         } catch (e: Throwable) {
-            try {
-                if (!cancel(e))
-                    handleCoroutineException(context, e, this)
-            } finally {
-                doLockedSignalCompleted()
-            }
-            throw getCancellationException()
+            // If onNext fails with exception, then we cancel coroutine (with this exception) and then rethrow it
+            // to abort the corresponding send/offer invocation. From the standpoint of coroutines machinery,
+            // this failure is essentially equivalent to a failure of a child coroutine.
+            cancelCoroutine(e)
+            mutex.unlock()
+            throw e
         }
         /*
-           There is no sense to check for `isActive` before doing `unlock`, because cancellation/completion might
-           happen after this check and before `unlock` (see `onCancellation` that does not do anything
-           if it fails to acquire the lock that we are still holding).
-           We have to recheck `isCompleted` after `unlock` anyway.
+         * There is no sense to check for `isActive` before doing `unlock`, because cancellation/completion might
+         * happen after this check and before `unlock` (see signalCompleted that does not do anything
+         * if it fails to acquire the lock that we are still holding).
+         * We have to recheck `isCompleted` after `unlock` anyway.
          */
+        unlockAndCheckCompleted()
+    }
+
+    private fun unlockAndCheckCompleted() {
         mutex.unlock()
         // recheck isActive
         if (!isActive && mutex.tryLock())
-            doLockedSignalCompleted()
+            doLockedSignalCompleted(completionCause, completionCauseHandled)
     }
 
     // assert: mutex.isLocked()
-    private fun doLockedSignalCompleted() {
+    private fun doLockedSignalCompleted(cause: Throwable?, handled: Boolean) {
+        // cancellation failures
         try {
             if (_signal.value >= CLOSED) {
                 _signal.value = SIGNALLED // we'll signal onError/onCompleted (that the final state -- no CAS needed)
-                val cause = getCompletionCause()
                 try {
-                    if (cause != null && cause !is CancellationException)
+                    if (cause != null && cause !is CancellationException) {
+                        /*
+                         * Reactive frameworks have two types of exceptions: regular and fatal.
+                         * Regular are passed to onError.
+                         * Fatal can be passed to onError, but even the standard implementations **can just swallow it** (e.g. see #1297).
+                         * Such behaviour is inconsistent, leads to silent failures and we can't possibly know whether
+                         * the cause will be handled by onError (and moreover, it depends on whether a fatal exception was
+                         * thrown by subscriber or upstream).
+                         * To make behaviour consistent and least surprising, we always handle fatal exceptions
+                         * by coroutines machinery, anyway, they should not be present in regular program flow,
+                         * thus our goal here is just to expose it as soon as possible.
+                         */
                         subscriber.onError(cause)
-                    else
+                        if (!handled && cause.isFatal()) {
+                            handleCoroutineException(context, cause)
+                        }
+                    }
+                    else {
                         subscriber.onComplete()
+                    }
                 } catch (e: Throwable) {
-                    handleCoroutineException(context, e, this)
+                    // Unhandled exception (cannot handle in other way, since we are already complete)
+                    handleCoroutineException(context, e)
                 }
             }
         } finally {
@@ -162,12 +188,24 @@ private class RxObservableCoroutine<T>(
         }
     }
 
-    override fun onCancellation(cause: Throwable?) {
+    private fun signalCompleted(cause: Throwable?, handled: Boolean) {
         if (!_signal.compareAndSet(OPEN, CLOSED)) return // abort, other thread invoked doLockedSignalCompleted
         if (mutex.tryLock()) // if we can acquire the lock
-            doLockedSignalCompleted()
+            doLockedSignalCompleted(cause, handled)
     }
 
-    // Cancellable impl
-    override fun cancel() { cancel(cause = null) }
+    override fun onCompleted(value: Unit) {
+        signalCompleted(null, false)
+    }
+
+    override fun onCancelled(cause: Throwable, handled: Boolean) {
+        signalCompleted(cause, handled)
+    }
+}
+
+internal fun Throwable.isFatal() = try {
+    Exceptions.throwIfFatal(this) // Rx-consistent behaviour without hardcode
+    false
+} catch (e: Throwable) {
+    true
 }

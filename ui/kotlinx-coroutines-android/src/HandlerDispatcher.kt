@@ -4,45 +4,72 @@
 
 @file:Suppress("unused")
 
-package kotlinx.coroutines.experimental.android
+package kotlinx.coroutines.android
 
 import android.os.*
-import android.support.annotation.VisibleForTesting
+import android.support.annotation.*
 import android.view.*
-import kotlinx.coroutines.experimental.*
-import java.lang.reflect.Constructor
-import java.util.concurrent.*
-import kotlin.coroutines.experimental.*
-
-/**
- * Dispatches execution onto Android main thread and provides native [delay][Delay.delay] support.
- */
-public val Dispatchers.Main: HandlerDispatcher
-    get() = mainDispatcher
+import kotlinx.coroutines.*
+import kotlinx.coroutines.internal.*
+import java.lang.reflect.*
+import kotlin.coroutines.*
 
 /**
  * Dispatches execution onto Android [Handler].
  *
  * This class provides type-safety and a point for future extensions.
  */
-public sealed class HandlerDispatcher : CoroutineDispatcher(), Delay {
+public sealed class HandlerDispatcher : MainCoroutineDispatcher(), Delay {
     /**
-     * Returns dispatcher that executes coroutines immediately when it is already in the right handler context
-     * (current looper is the same as this handler's looper). See [isDispatchNeeded] documentation on
-     * why this should not be done by default.
+     * Returns dispatcher that executes coroutines immediately when it is already in the right context
+     * (current looper is the same as this handler's looper) without an additional [re-dispatch][CoroutineDispatcher.dispatch].
+     * This dispatcher does not use [Handler.post] when current looper is the same as looper of the handler.
+     *
+     * Immediate dispatcher is safe from stack overflows and in case of nested invocations forms event-loop similar to [Dispatchers.Unconfined].
+     * The event loop is an advanced topic and its implications can be found in [Dispatchers.Unconfined] documentation.
+     *
+     * Example of usage:
+     * ```
+     * suspend fun updateUiElement(val text: String) {
+     *   /*
+     *    * If it is known that updateUiElement can be invoked both from the Main thread and from other threads,
+     *    * `immediate` dispatcher is used as a performance optimization to avoid unnecessary dispatch.
+     *    *
+     *    * In that case, when `updateUiElement` is invoked from the Main thread, `uiElement.text` will be
+     *    * invoked immediately without any dispatching, otherwise, the `Dispatchers.Main` dispatch cycle via
+     *    * `Handler.post` will be triggered.
+     *    */
+     *   withContext(Dispatchers.Main.immediate) {
+     *     uiElement.text = text
+     *   }
+     *   // Do context-independent logic such as logging
+     * }
+     * ```
      */
-    public abstract val immediate: HandlerDispatcher
+    public abstract override val immediate: HandlerDispatcher
+}
+
+internal class AndroidDispatcherFactory : MainDispatcherFactory {
+
+    override fun createDispatcher(allFactories: List<MainDispatcherFactory>) =
+        HandlerContext(Looper.getMainLooper().asHandler(async = true), "Main")
+
+    override fun hintOnError(): String? = "For tests Dispatchers.setMain from kotlinx-coroutines-test module can be used"
+
+    override val loadPriority: Int
+        get() = Int.MAX_VALUE / 2
 }
 
 /**
- * Represents an arbitrary [Handler] as a implementation of [CoroutineDispatcher].
+ * Represents an arbitrary [Handler] as a implementation of [CoroutineDispatcher]
+ * with an optional [name] for nicer debugging
  */
-public fun Handler.asCoroutineDispatcher(): HandlerDispatcher =
-    HandlerContext(this)
+@JvmName("from") // this is for a nice Java API, see issue #255
+@JvmOverloads
+public fun Handler.asCoroutineDispatcher(name: String? = null): HandlerDispatcher =
+    HandlerContext(this, name)
 
 private const val MAX_DELAY = Long.MAX_VALUE / 2 // cannot delay for too long on Android
-
-private val mainHandler = Looper.getMainLooper().asHandler(async = true)
 
 @VisibleForTesting
 internal fun Looper.asHandler(async: Boolean): Handler {
@@ -68,18 +95,14 @@ internal fun Looper.asHandler(async: Boolean): Handler {
     return constructor.newInstance(this, null, true)
 }
 
-private val mainDispatcher = HandlerContext(mainHandler, "Main")
+@JvmField
+@Deprecated("Use Dispatchers.Main instead", level = DeprecationLevel.HIDDEN)
+internal val Main: HandlerDispatcher? = runCatching { HandlerContext(Looper.getMainLooper().asHandler(async = true), "Main") }.getOrNull()
 
 /**
  * Implements [CoroutineDispatcher] on top of an arbitrary Android [Handler].
- * @suppress **Deprecated**: Use [HandlerDispatcher].
  */
-@Deprecated(
-    message = "Use HandlerDispatcher",
-    replaceWith = ReplaceWith("HandlerDispatcher",
-        imports = ["kotlinx.coroutines.experimental.android.HandlerDispatcher"])
-)
-public class HandlerContext private constructor(
+internal class HandlerContext private constructor(
     private val handler: Handler,
     private val name: String?,
     private val invokeImmediately: Boolean
@@ -109,14 +132,16 @@ public class HandlerContext private constructor(
         handler.post(block)
     }
 
-    override fun scheduleResumeAfterDelay(time: Long, unit: TimeUnit, continuation: CancellableContinuation<Unit>) {
-        handler.postDelayed({
+    override fun scheduleResumeAfterDelay(timeMillis: Long, continuation: CancellableContinuation<Unit>) {
+        val block = Runnable {
             with(continuation) { resumeUndispatched(Unit) }
-        }, unit.toMillis(time).coerceAtMost(MAX_DELAY))
+        }
+        handler.postDelayed(block, timeMillis.coerceAtMost(MAX_DELAY))
+        continuation.invokeOnCancellation { handler.removeCallbacks(block) }
     }
 
-    override fun invokeOnTimeout(time: Long, unit: TimeUnit, block: Runnable): DisposableHandle {
-        handler.postDelayed(block, unit.toMillis(time).coerceAtMost(MAX_DELAY))
+    override fun invokeOnTimeout(timeMillis: Long, block: Runnable): DisposableHandle {
+        handler.postDelayed(block, timeMillis.coerceAtMost(MAX_DELAY))
         return object : DisposableHandle {
             override fun dispose() {
                 handler.removeCallbacks(block)
@@ -124,18 +149,12 @@ public class HandlerContext private constructor(
         }
     }
 
-    /**
-     * Awaits the next animation frame and returns frame time in nanoseconds.
-     * @suppress **Deprecated**: Use top-level [awaitFrame].
-     */
-    @Deprecated(
-        message = "Use top-level awaitFrame",
-        replaceWith = ReplaceWith("kotlinx.coroutines.experimental.android.awaitFrame()")
-    )
-    public suspend fun awaitFrame(): Long =
-        kotlinx.coroutines.experimental.android.awaitFrame()
-
-    override fun toString() = name ?: handler.toString()
+    override fun toString(): String =
+        if (name != null) {
+            if (invokeImmediately) "$name [immediate]" else name
+        } else {
+            handler.toString()
+        }
 
     override fun equals(other: Any?): Boolean = other is HandlerContext && other.handler === handler
     override fun hashCode(): Int = System.identityHashCode(handler)
@@ -157,9 +176,9 @@ public suspend fun awaitFrame(): Long {
     }
     // post into looper thread thread to figure it out
     return suspendCancellableCoroutine { cont ->
-        mainHandler.post {
+        Dispatchers.Main.dispatch(EmptyCoroutineContext, Runnable {
             updateChoreographerAndPostFrameCallback(cont)
-        }
+        })
     }
 }
 
@@ -171,6 +190,6 @@ private fun updateChoreographerAndPostFrameCallback(cont: CancellableContinuatio
 
 private fun postFrameCallback(choreographer: Choreographer, cont: CancellableContinuation<Long>) {
     choreographer.postFrameCallback { nanos ->
-        with(cont) { mainDispatcher.resumeUndispatched(nanos) }
+        with(cont) { Dispatchers.Main.resumeUndispatched(nanos) }
     }
 }

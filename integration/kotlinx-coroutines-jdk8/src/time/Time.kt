@@ -1,47 +1,57 @@
 /*
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
-package kotlinx.coroutines.experimental.time
+package kotlinx.coroutines.time
 
-import kotlinx.coroutines.experimental.CoroutineScope
-import kotlinx.coroutines.experimental.selects.SelectBuilder
-import java.time.Duration
-import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.*
+import kotlinx.coroutines.selects.*
+import java.time.*
+import java.time.temporal.*
 
 /**
- * "java.time" adapter method for [kotlinx.coroutines.experimental.delay]
+ * "java.time" adapter method for [kotlinx.coroutines.delay].
  */
 public suspend fun delay(duration: Duration) =
-        kotlinx.coroutines.experimental.delay(duration.toNanos(), TimeUnit.NANOSECONDS)
+        kotlinx.coroutines.delay(duration.coerceToMillis())
 
 /**
- * "java.time" adapter method for [SelectBuilder.onTimeout]
+ * "java.time" adapter method for [SelectBuilder.onTimeout].
  */
-public suspend fun <R> SelectBuilder<R>.onTimeout(duration: Duration, block: suspend () -> R) =
-        onTimeout(duration.toNanos(), TimeUnit.NANOSECONDS, block)
+public fun <R> SelectBuilder<R>.onTimeout(duration: Duration, block: suspend () -> R) =
+        onTimeout(duration.coerceToMillis(), block)
 
 /**
- * "java.time" adapter method for [kotlinx.coroutines.experimental.withTimeout]
+ * "java.time" adapter method for [kotlinx.coroutines.withTimeout].
  */
 public suspend fun <T> withTimeout(duration: Duration, block: suspend CoroutineScope.() -> T): T =
-        kotlinx.coroutines.experimental.withTimeout(duration.toNanos(), TimeUnit.NANOSECONDS, block)
+        kotlinx.coroutines.withTimeout(duration.coerceToMillis(), block)
 
 /**
- * @suppress **Deprecated**: for binary compatibility only
- */
-@Deprecated("for binary compatibility only", level=DeprecationLevel.HIDDEN)
-public suspend fun <T> withTimeout(duration: Duration, block: suspend () -> T): T =
-        kotlinx.coroutines.experimental.withTimeout(duration.toNanos(), TimeUnit.NANOSECONDS) { block() }
-
-/**
- * "java.time" adapter method for [kotlinx.coroutines.experimental.withTimeoutOrNull]
+ * "java.time" adapter method for [kotlinx.coroutines.withTimeoutOrNull].
  */
 public suspend fun <T> withTimeoutOrNull(duration: Duration, block: suspend CoroutineScope.() -> T): T? =
-        kotlinx.coroutines.experimental.withTimeoutOrNull(duration.toNanos(), TimeUnit.NANOSECONDS, block)
+        kotlinx.coroutines.withTimeoutOrNull(duration.coerceToMillis(), block)
 
 /**
- * @suppress **Deprecated**: for binary compatibility only
+ * Coerces the given [Duration] to a millisecond delay.
+ * Negative values are coerced to zero, values that cannot
+ * be represented in milliseconds as long ("infinite" duration) are coerced to [Long.MAX_VALUE]
+ * and durations lesser than a millisecond are coerced to 1 millisecond.
+ *
+ * The rationale of coercion:
+ * 1) Too large durations typically indicate infinity and Long.MAX_VALUE is the
+ *    best approximation of infinity we can provide.
+ * 2) Coercing too small durations to 1 instead of 0 is crucial for two patterns:
+ *    - Programming with deadlines and delays
+ *    - Non-suspending fast-paths (e.g. `withTimeout(1 nanosecond) { 42 }` should not throw)
  */
-@Deprecated("for binary compatibility only", level=DeprecationLevel.HIDDEN)
-public suspend fun <T> withTimeoutOrNull(duration: Duration, block: suspend () -> T): T? =
-        kotlinx.coroutines.experimental.withTimeoutOrNull(duration.toNanos(), TimeUnit.NANOSECONDS) { block() }
+private fun Duration.coerceToMillis(): Long {
+    if (this <= Duration.ZERO) return 0
+    if (this <= ChronoUnit.MILLIS.duration) return 1
+
+    // Maximum scalar values of Duration.ofMillis(Long.MAX_VALUE)
+    val maxSeconds = 9223372036854775
+    val maxNanos = 807000000
+    return if (seconds < maxSeconds || seconds == maxSeconds && nano < maxNanos) toMillis()
+    else Long.MAX_VALUE
+}

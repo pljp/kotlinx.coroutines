@@ -2,9 +2,9 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.reactive
+package kotlinx.coroutines.reactive
 
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
 import org.hamcrest.core.*
 import org.junit.*
 import org.junit.Assert.*
@@ -12,9 +12,9 @@ import org.reactivestreams.*
 
 class PublishTest : TestBase() {
     @Test
-    fun testBasicEmpty() = runBlocking {
+    fun testBasicEmpty() = runTest {
         expect(1)
-        val publisher = publish<Int> {
+        val publisher = publish<Int>(currentDispatcher()) {
             expect(5)
         }
         expect(2)
@@ -30,9 +30,9 @@ class PublishTest : TestBase() {
     }
 
     @Test
-    fun testBasicSingle() = runBlocking {
+    fun testBasicSingle() = runTest {
         expect(1)
-        val publisher = publish {
+        val publisher = publish(currentDispatcher()) {
             expect(5)
             send(42)
             expect(7)
@@ -56,9 +56,9 @@ class PublishTest : TestBase() {
     }
 
     @Test
-    fun testBasicError() = runBlocking<Unit> {
+    fun testBasicError() = runTest {
         expect(1)
-        val publisher = publish<Int> {
+        val publisher = publish<Int>(currentDispatcher()) {
             expect(5)
             throw RuntimeException("OK")
         }
@@ -79,5 +79,108 @@ class PublishTest : TestBase() {
         expect(4)
         yield() // to publish coroutine
         finish(7)
+    }
+
+    @Test
+    fun testHandleFailureAfterCancel() = runTest {
+        expect(1)
+
+        val eh = CoroutineExceptionHandler { _, t ->
+            assertTrue(t is RuntimeException)
+            expect(6)
+        }
+        val publisher = publish<Unit>(Dispatchers.Unconfined + eh) {
+            try {
+                expect(3)
+                delay(10000)
+            } finally {
+                expect(5)
+                throw RuntimeException("FAILED") // crash after cancel
+            }
+        }
+        var sub: Subscription? = null
+        publisher.subscribe(object : Subscriber<Unit> {
+            override fun onComplete() {
+                expectUnreached()
+            }
+
+            override fun onSubscribe(s: Subscription) {
+                expect(2)
+                sub = s
+            }
+
+            override fun onNext(t: Unit?) {
+                expectUnreached()
+            }
+
+            override fun onError(t: Throwable?) {
+                expectUnreached()
+            }
+        })
+        expect(4)
+        sub!!.cancel()
+        finish(7)
+    }
+
+    @Test
+    fun testOnNextError() = runTest {
+        expect(1)
+        val publisher = publish(currentDispatcher()) {
+            expect(4)
+            try {
+                send("OK")
+            } catch(e: Throwable) {
+                expect(6)
+                assert(e is TestException)
+            }
+        }
+        expect(2)
+        val latch = CompletableDeferred<Unit>()
+        publisher.subscribe(object : Subscriber<String> {
+            override fun onComplete() {
+                expectUnreached()
+            }
+
+            override fun onSubscribe(s: Subscription) {
+                expect(3)
+                s.request(1)
+            }
+
+            override fun onNext(t: String) {
+                expect(5)
+                assertEquals("OK", t)
+                throw TestException()
+            }
+
+            override fun onError(t: Throwable) {
+                expect(7)
+                assert(t is TestException)
+                latch.complete(Unit)
+            }
+        })
+        latch.await()
+        finish(8)
+    }
+
+    @Test
+    fun testFailingConsumer() = runTest {
+        val pub = publish(currentDispatcher()) {
+            repeat(3) {
+                expect(it + 1) // expect(1), expect(2) *should* be invoked
+                send(it)
+            }
+        }
+        try {
+            pub.collect {
+                throw TestException()
+            }
+        } catch (e: TestException) {
+            finish(3)
+        }
+    }
+
+    @Test
+    fun testIllegalArgumentException() {
+        assertFailsWith<IllegalArgumentException> { publish<Int>(Job()) { } }
     }
 }

@@ -1,14 +1,14 @@
 <!--- INCLUDE .*/example-ui-([a-z]+)-([0-9]+)\.kt 
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 // This file was automatically generated from coroutines-guide-ui.md by Knit tool. Do not edit.
-package kotlinx.coroutines.experimental.javafx.guide.$$1$$2
+package kotlinx.coroutines.javafx.guide.$$1$$2
 
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.*
-import kotlinx.coroutines.experimental.javafx.JavaFx as Main
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.javafx.JavaFx as Main
 import javafx.application.Application
 import javafx.event.EventHandler
 import javafx.geometry.*
@@ -65,6 +65,9 @@ class ExampleApp : Application() {
 * [kotlinx-coroutines-javafx](kotlinx-coroutines-javafx) -- JavaFX UIアプリケーションのための `Dispatchers.JavaFx` コンテキスト。
 * [kotlinx-coroutines-swing](kotlinx-coroutines-swing) -- Swing UI アプリケーションのための `Dispatchers.Swing` コンテキスト。
 
+また、UIディスパッチャーは、 `kotlinx-coroutines-core` の `Dispatchers.Main` を介して利用でき、対応する実装（Android、JavaFx、またはSwing）は[`ServiceLoader`](https://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html) APIによって検出されます。
+たとえば、JavaFxアプリケーションを作成している場合、 `Dispatchers.Main` または `Dispachers.JavaFx` 拡張のいずれかを使用できますが、これは同じオブジェクトになります。
+
 このガイドでは、すべてのUIライブラリを同時に扱います。なぜなら、これらのモジュールのそれぞれは、数ページの長さのただ1つだけのオブジェクト定義から成っているからです。 ここには含まれていなくても、これらのどれかを例として使って、好みのUIライブラリ用の対応するコンテキストオブジェクトを書くことができます。
 
 ## 目次
@@ -86,7 +89,7 @@ class ExampleApp : Application() {
   * [構造化並列処理、ライフサイクルおよびコルーチンの親子階層](#構造化並列処理ライフサイクルおよびコルーチンの親子階層)
   * [ブロッキング操作](#ブロッキング操作)
 * [高度なトピック](#高度なトピック)
-  * [ディスパッチせずにUIイベントハンドラでコルーチンを開始する](#ディスパッチせずにuiイベントハンドラでコルーチンを開始する)
+  * [ディスパッチせずにUIイベントハンドラーでコルーチンを開始する](#ディスパッチせずにuiイベントハンドラーでコルーチンを開始する)
 
 <!--- END_TOC -->
 
@@ -141,13 +144,7 @@ fun setup(hello: TextView, fab: FloatingActionButton) {
 `kotlinx-coroutines-android` モジュールへの依存関係を `app/build.gradle` ファイルの `dependencies { ... }` セクションに追加してください。
 
 ```groovy
-compile "org.jetbrains.kotlinx:kotlinx-coroutines-android:0.26.1"
-```
-
-コルーチンはKotlinの実験的な機能です。
-`gradle.properties` ファイルに次の行を追加することで、Kotlinコンパイラでコルーチンを有効にする必要があります。 
-```properties
-kotlin.coroutines=enable
+implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.0"
 ```
 
 GitHubの[kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines)プロジェクトをワークステーションにクローンすることができます。 Android用のテンプレートプロジェクトは、[`ui/kotlinx-coroutines-android/example-app`](kotlinx-coroutines-android/example-app)ディレクトリにあります。
@@ -159,11 +156,11 @@ Android Studioで読み込んでAndroidのこのガイドを追試すること�
 
 ### UIコルーチンの起動
 
-`kotlinx-coroutines-javafx` モジュールには、JavaFxアプリケーションスレッドにコルーチンの実行をディスパッチする[Dispatchers.JavaFx][kotlinx.coroutines.experimental.Dispatchers.JavaFx]ディスパッチャーが含まれています。
+`kotlinx-coroutines-javafx` モジュールには、JavaFxアプリケーションスレッドにコルーチンの実行をディスパッチする[Dispatchers.JavaFx][kotlinx.coroutines.Dispatchers.JavaFx]ディスパッチャーが含まれています。
 提示されたすべての例をAndroidに簡単に移植できるように、これを `Main` としてインポートします。
  
 ```kotlin
-import kotlinx.coroutines.experimental.javafx.JavaFx as Main
+import kotlinx.coroutines.javafx.JavaFx as Main
 ```
  
 <!--- CLEAR -->
@@ -300,13 +297,13 @@ fun Node.onClick(action: suspend (MouseEvent) -> Unit) {
 
 > [ここ](kotlinx-coroutines-javafx/test/guide/example-ui-actor-02.kt)で完全なコードを取得できます
   
-アクターのコルーチンと通常のイベントハンドラの統合の根底にある重要なアイデアは、[SendChannel]に待機しない[offer][SendChannel.offer]関数があることです。
+アクターのコルーチンと通常のイベントハンドラーの統合の根底にある重要なアイデアは、[SendChannel]に待機しない[offer][SendChannel.offer]関数があることです。
 可能ならばアクターにただちに要素を送信し、そうでない場合は要素を破棄します。
 `offer` は実際にはここでは無視している `Boolean` の結果を返します。
 
 このバージョンのコードで円を繰り返しクリックしてみてください。
 カウントダウンアニメーションの実行中は、クリックは無視されます。 これは、アクターがアニメーションで忙しく、そのチャネルから受信しないために発生します。
-デフォルトでは、アクターのメールボックスは[RendezvousChannel]によって支援されています。その `offer` オペレーションは、`receive` がアクティブな場合にのみ成功します。
+デフォルトでは、アクターのメールボックスは `RendezvousChannel` によって支援されています。その `offer` オペレーションは、`receive` がアクティブな場合にのみ成功します。
 
 > Androidでは、 `MouseEvent` はありませんので、シグナルとしてアクターに `Unit` を送ります。
 `View` クラスの対応する拡張は次のようになります。
@@ -335,7 +332,7 @@ fun View.onClick(action: suspend (View) -> Unit) {
 [actor]コルーチンビルダーは、このアクターがメールボックスに使用しているチャネルの実装を制御する、オプションの `capacity` パラメーターを受け取ります。
 利用可能なすべての選択肢の説明は、[`Channel()`][Channel]ファクトリ関数のドキュメントに記載されています。
 
-[Channel.CONFLATED]の容量値を渡すことで[ConflatedChannel]を使用するコードを変更しましょう。
+[Channel.CONFLATED]の容量値を渡すことで `ConflatedChannel` を使用するコードを変更しましょう。
 この変更は、アクターを作成する行にのみ適用されます。
 
 ```kotlin
@@ -352,16 +349,16 @@ fun Node.onClick(action: suspend (MouseEvent) -> Unit) {
 ```  
 
 > [ここ](kotlinx-coroutines-javafx/test/guide/example-ui-actor-03.kt)でJavaFxの完全なコードを取得できます。
-Androidでは、前の例の `val eventActor = ...` 行を更新する必要があります。
+  Androidでは、前の例の `val eventActor = ...` 行を更新する必要があります。
 
 アニメーションの実行中にサークルをクリックすると、アニメーションの終了後にアニメーションが一度だけ再び起動されます。
-アニメーションの実行中に繰り返しクリックされると、_合流_ して最新のイベントのみが処理されます。
+アニメーションの実行中に繰り返しクリックされると、_合成_ して最新のイベントのみが処理されます。
 
-これはまた、直前に受信した更新に基づいてUIを更新することによって、入ってくる高頻度のイベントストリームに反応しなければならないUIアプリケーションにとって望ましい動作です。
-[ConflatedChannel]を使用しているコルーチンは、イベントのバッファリングによって大抵発生する遅延を防ぎます。
+これは、最近受信した更新に基づいてUIを更新することにより、受信する高頻度イベントストリームに対応する必要があるUIアプリケーションにとっても望ましい動作です。
+`ConflatedChannel` を使用するコルーチンは通常、イベントのバッファリングによって発生する遅延を回避します。
 
 上の行で `capacity` パラメーターを試して、コードの動作にどのように影響するかを調べることができます。
-`capacity = Channel.UNLIMITED` を設定すると、すべてのイベントをバッファーする[LinkedListChannel]メールボックスを持つコルーチンが作成されます。 この場合、アニメーションは円がクリックされた回数だけ実行されます。
+`capacity = Channel.UNLIMITED` を設定すると、すべてのイベントをバッファーする `LinkedListChannel` メールボックスを持つコルーチンが作成されます。 この場合、アニメーションは円がクリックされた回数だけ実行されます。
 
 ## ブロッキング操作
 
@@ -376,7 +373,7 @@ Androidでは、前の例の `val eventActor = ...` 行を更新する必要が�
 <!--- INCLUDE .*/example-ui-blocking-([0-9]+).kt
 
 fun Node.onClick(action: suspend (MouseEvent) -> Unit) {
-    val eventActor = actor<MouseEvent>(Dispatchers.Main, capacity = Channel.CONFLATED) {
+    val eventActor = GlobalScope.actor<MouseEvent>(Dispatchers.Main, capacity = Channel.CONFLATED) {
         for (event in channel) action(event) // アクションにイベントを渡す
     }
     onMouseClicked = EventHandler { event ->
@@ -426,11 +423,12 @@ fun setup(hello: Text, fab: Circle) {
 
 典型的なUIアプリケーションには、ライフサイクルの要素がいくつかあります。
 ウィンドウ、UIコントロール、アクティビティ、ビュー、フラグメント、その他の視覚的要素が作成され、破棄されます。
-IOまたはバックグラウンド計算を実行する長期実行コルーチンは、必要以上に長くUI要素への参照を保持し、すでに破棄されて表示されないUIオブジェクトのツリー全体のガベージコレクションを阻みます。
+IOまたはバックグラウンド計算を実行する長時間実行コルーチンは、対応するUI要素への参照を必要以上に保持することができ、すでに破棄されて表示されなくなったUIオブジェクトのツリー全体のガベージコレクションを防ぎます。
 
 この問題の自然な解決策は、ライフサイクルを持つ各UIオブジェクトに[Job]オブジェクトを関連付けて、このジョブのコンテキストですべてのコルーチンを作成することです。
 しかし、関連するジョブオブジェクトをすべてのコルーチンのビルダーに渡すのは忘れやすく、エラーが発生しやすくなります。
-この目的のためには、[CoroutineScope]インターフェイスをUI所有者が実装することで、[CoroutineScope]の拡張として定義されているすべてのコルーチンビルダーは、明示的に言及せずにUIジョブを継承します。
+この目的のために、[CoroutineScope]インターフェースはUI所有者によって実装され、[CoroutineScope]の拡張として定義されたすべてのコルーチンビルダーは、明示的に言及せずにUIジョブを継承します。
+簡単にするために、[MainScope()]ファクトリを使用できます。 `Dispatchers.Main`と親ジョブを自動的に提供します。
 
 例えば、Androidアプリケーションでは最初に `Activity` が _作成_ され、不要になったときやメモリを解放しなければならないときに _破棄_ されます。
 自然な解決策は、 `Activity` のインスタンスに `Job` のインスタンスを付随することです。
@@ -438,19 +436,10 @@ IOまたはバックグラウンド計算を実行する長期実行コルーチ
 <!--- CLEAR -->
 
 ```kotlin
-abstract class ScopedAppActivity: AppCompatActivity(), CoroutineScope {
-    protected lateinit var job: Job
-    override val coroutineContext: CoroutineContext 
-        get() = job + Dispatchers.Main
-    
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        job = Job()
-    }
-        
+abstract class ScopedAppActivity: AppCompatActivity(), CoroutineScope by MainScope() {
     override fun onDestroy() {
         super.onDestroy()
-        job.cancel()
+        cancel() // CoroutineScope.cancel
     } 
 }
 ```
@@ -478,34 +467,43 @@ class MainActivity : ScopedAppActivity() {
 
 `MainActivity` の中から起動したコルーチンはすべてそのジョブを親として持ち、アクティビティが破棄されると直ちに取り消されます。
 
-アクティビティスコープをそのビューとプレゼンターに伝播するには、現在のスコープをキャプチャする[currentScope]ビルダーを使用できます。
-別のソリューションは、デリゲーションを使用して子要素に[CoroutineScope]を実装することです。例：
+アクティビティスコープをビューとプレゼンターに伝達するには、複数の手法を使用できます。
+- ネストされたスコープを提供する[coroutineScope]ビルダー
+- プレゼンターメソッドパラメーターで[CoroutineScope]を受け取る
+- [CoroutineScope]でメソッド拡張を作成する（トップレベルメソッドにのみ適用可能）
 
 ```kotlin
 class ActivityWithPresenters: ScopedAppActivity() {
     fun init() {
         val presenter = Presenter()
-        val presenter2 = NonSuspendingPresenter(this)
+        val presenter2 = ScopedPresenter(this)
     }
 }
 
 class Presenter {
-    suspend fun loadData() = currentScope {
-        // ここは ActivityWithPresenters のスコープの中
+    suspend fun loadData() = coroutineScope {
+        // 外側のアクティビティのネストされたスコープ
+    }
+    
+    suspend fun loadData(uiScope: CoroutineScope) = uiScope.launch {
+      // uiScopeで呼び出される
     }
 }
 
-class NonSuspendingPresenter(scope: CoroutineScope): CoroutineScope by scope {
+class ScopedPresenter(scope: CoroutineScope): CoroutineScope by scope {
     fun loadData() = launch { // ActivityWithPresentersのスコープの拡張
-        // 実装
     }
+}
+
+suspend fun CoroutineScope.launchInIO() = launch(Dispatchers.IO) {
+   // 呼び出し元のスコープで起動されますが、IOディスパッチャーを使用します
 }
 ``` 
 
 ジョブ間の親子関係は階層を形成します。
 ビューの代わりにバックグラウンドジョブを実行するコルーチンは、そのコンテキストでさらなる子コルーチンを作り出すことができます。
 親ジョブがキャンセルされると、コルーチンのツリー全体がキャンセルされます。
-その例は、コルーチンのガイドの[「コルーチンの子」](../docs/coroutines-guide.md#コルーチンの子)セクションに示されています。
+その例は、コルーチンのガイドの[「コルーチンの子」](../docs/coroutine-context-and-dispatchers.md#コルーチンの子)セクションに示されています。
 <!--- CLEAR -->
 
 ### ブロッキング操作
@@ -573,7 +571,7 @@ fun fibBlocking(x: Int): Int =
 
 このセクションでは、さまざまな高度なトピックについて説明します。
 
-### ディスパッチせずにUIイベントハンドラでコルーチンを開始する
+### ディスパッチせずにUIイベントハンドラーでコルーチンを開始する
 
 UIスレッドからコルーチンが起動したときの実行順序を視覚化するために `setup` に次のコードを書きましょう。
 
@@ -605,12 +603,12 @@ After delay
 ```
 
 ご覧のように、[launch]の後すぐに実行が継続され、後で実行するためにコルーチンがメインUIスレッドにポストされます。
-`kotlinx.coroutines` のすべてのUIディスパッチャはこのように実装されています。
+`kotlinx.coroutines` のすべてのUIディスパッチャーはこのように実装されています。
 なぜでしょうか？
 
-基本的にここでの選択は、「JSスタイル」の非同期アプローチ（非同期アクションは常に後で同一のディスパッチスレッドで実行されるように延期されます）と「C#スタイル」アプローチ（非同期アクションは、最初の中断ポイントまで呼び出し元スレッドで実行されます）の間です。
+基本的にここでの選択は、「JSスタイル」の非同期アプローチ（非同期アクションは常にイベントディスパッチスレッドで後から実行されるように延期されます）と「C#スタイル」アプローチ（非同期アクションは、最初の中断ポイントまで呼び出し元スレッドで実行されます）の間です。
 
-一方、C#のアプローチはより効率的だと思われますが、「必要な場合には`yield`を使う…」のような推奨事項で終わります。
+C#のアプローチはより効率的であるように見えますが、「必要な場合は `yield` を使用する…」などの推奨事項があります。
 これはエラーが起こりやすいです。
 JSスタイルのアプローチはより一貫性があり、プログラマーはyieldする必要があるかどうかについて考える必要はありません。
 
@@ -644,30 +642,28 @@ After delay
 ```
   
 <!--- MODULE kotlinx-coroutines-core -->
-<!--- INDEX kotlinx.coroutines.experimental -->
-[launch]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/launch.html
-[delay]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/delay.html
-[Job]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-job/index.html
-[Job.cancel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-job/cancel.html
-[CoroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-scope/index.html
-[currentScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/current-scope.html
-[withContext]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/with-context.html
-[Dispatchers.Default]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-dispatchers/-default.html
-[CoroutineStart]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-start/index.html
-[async]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/async.html
-[CoroutineStart.UNDISPATCHED]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-start/-u-n-d-i-s-p-a-t-c-h-e-d.html
-<!--- INDEX kotlinx.coroutines.experimental.channels -->
-[actor]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/actor.html
-[SendChannel.offer]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-send-channel/offer.html
-[SendChannel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-send-channel/index.html
-[RendezvousChannel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-rendezvous-channel/index.html
-[Channel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-channel/index.html
-[ConflatedChannel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-conflated-channel/index.html
-[Channel.CONFLATED]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-channel/-c-o-n-f-l-a-t-e-d.html
-[LinkedListChannel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-linked-list-channel/index.html
+<!--- INDEX kotlinx.coroutines -->
+[launch]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/launch.html
+[delay]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/delay.html
+[Job]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/index.html
+[Job.cancel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/cancel.html
+[CoroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope/index.html
+[MainScope()]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-main-scope.html
+[coroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/coroutine-scope.html
+[withContext]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/with-context.html
+[Dispatchers.Default]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-default.html
+[CoroutineStart]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-start/index.html
+[async]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/async.html
+[CoroutineStart.UNDISPATCHED]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-start/-u-n-d-i-s-p-a-t-c-h-e-d.html
+<!--- INDEX kotlinx.coroutines.channels -->
+[actor]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/actor.html
+[SendChannel.offer]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/-send-channel/offer.html
+[SendChannel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/-send-channel/index.html
+[Channel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/-channel/index.html
+[Channel.CONFLATED]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/-channel/-c-o-n-f-l-a-t-e-d.html
 <!--- MODULE kotlinx-coroutines-javafx -->
-<!--- INDEX kotlinx.coroutines.experimental.javafx -->
-[kotlinx.coroutines.experimental.Dispatchers.JavaFx]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-javafx/kotlinx.coroutines.experimental.javafx/kotlinx.coroutines.experimental.-dispatchers/-java-fx.html
+<!--- INDEX kotlinx.coroutines.javafx -->
+[kotlinx.coroutines.Dispatchers.JavaFx]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-javafx/kotlinx.coroutines.javafx/kotlinx.coroutines.-dispatchers/-java-fx.html
 <!--- MODULE kotlinx-coroutines-android -->
-<!--- INDEX kotlinx.coroutines.experimental.android -->
+<!--- INDEX kotlinx.coroutines.android -->
 <!--- END -->

@@ -2,14 +2,15 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.rx2
+package kotlinx.coroutines.rx2
 
 import io.reactivex.*
 import io.reactivex.disposables.Disposable
-import kotlinx.coroutines.experimental.CancellableContinuation
-import kotlinx.coroutines.experimental.CancellationException
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.suspendCancellableCoroutine
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.*
 
 // ------------------------ CompletableSource ------------------------
 
@@ -186,7 +187,7 @@ private suspend fun <T> ObservableSource<T>.awaitOne(
                 Mode.LAST, Mode.SINGLE -> {
                     if (mode == Mode.SINGLE && seenValue) {
                         if (cont.isActive)
-                            cont.resumeWithException(IllegalArgumentException("More that one onNext value for $mode"))
+                            cont.resumeWithException(IllegalArgumentException("More than one onNext value for $mode"))
                         subscription.dispose()
                     } else {
                         value = t

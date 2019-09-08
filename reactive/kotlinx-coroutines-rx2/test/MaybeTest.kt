@@ -2,16 +2,18 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.rx2
+package kotlinx.coroutines.rx2
 
 import io.reactivex.*
+import io.reactivex.disposables.*
 import io.reactivex.functions.*
 import io.reactivex.internal.functions.Functions.*
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
 import org.hamcrest.core.*
 import org.junit.*
 import org.junit.Assert.*
 import java.util.concurrent.*
+import java.util.concurrent.CancellationException
 
 class MaybeTest : TestBase() {
     @Before
@@ -22,14 +24,14 @@ class MaybeTest : TestBase() {
     @Test
     fun testBasicSuccess() = runBlocking {
         expect(1)
-        val maybe = rxMaybe {
+        val maybe = rxMaybe(currentDispatcher()) {
             expect(4)
             "OK"
         }
         expect(2)
         maybe.subscribe { value ->
             expect(5)
-            Assert.assertThat(value, IsEqual("OK"))
+            assertThat(value, IsEqual("OK"))
         }
         expect(3)
         yield() // to started coroutine
@@ -39,7 +41,7 @@ class MaybeTest : TestBase() {
     @Test
     fun testBasicEmpty() = runBlocking {
         expect(1)
-        val maybe = rxMaybe {
+        val maybe = rxMaybe(currentDispatcher()) {
             expect(4)
             null
         }
@@ -55,7 +57,7 @@ class MaybeTest : TestBase() {
     @Test
     fun testBasicFailure() = runBlocking {
         expect(1)
-        val maybe = rxMaybe {
+        val maybe = rxMaybe(currentDispatcher()) {
             expect(4)
             throw RuntimeException("OK")
         }
@@ -76,7 +78,7 @@ class MaybeTest : TestBase() {
     @Test
     fun testBasicUnsubscribe() = runBlocking {
         expect(1)
-        val maybe = rxMaybe {
+        val maybe = rxMaybe(currentDispatcher()) {
             expect(4)
             yield() // back to main, will get cancelled
             expectUnreached()
@@ -98,7 +100,7 @@ class MaybeTest : TestBase() {
 
     @Test
     fun testMaybeNoWait() {
-        val maybe = GlobalScope.rxMaybe {
+        val maybe = rxMaybe {
             "OK"
         }
 
@@ -119,7 +121,7 @@ class MaybeTest : TestBase() {
 
     @Test
     fun testMaybeEmitAndAwait() {
-        val maybe = GlobalScope.rxMaybe {
+        val maybe = rxMaybe {
             Maybe.just("O").await() + "K"
         }
 
@@ -130,7 +132,7 @@ class MaybeTest : TestBase() {
 
     @Test
     fun testMaybeWithDelay() {
-        val maybe = GlobalScope.rxMaybe {
+        val maybe = rxMaybe {
             Observable.timer(50, TimeUnit.MILLISECONDS).map { "O" }.awaitSingle() + "K"
         }
 
@@ -141,7 +143,7 @@ class MaybeTest : TestBase() {
 
     @Test
     fun testMaybeException() {
-        val maybe = GlobalScope.rxMaybe {
+        val maybe = rxMaybe {
             Observable.just("O", "K").awaitSingle() + "K"
         }
 
@@ -152,7 +154,7 @@ class MaybeTest : TestBase() {
 
     @Test
     fun testAwaitFirst() {
-        val maybe = GlobalScope.rxMaybe {
+        val maybe = rxMaybe {
             Observable.just("O", "#").awaitFirst() + "K"
         }
 
@@ -163,7 +165,7 @@ class MaybeTest : TestBase() {
 
     @Test
     fun testAwaitLast() {
-        val maybe = GlobalScope.rxMaybe {
+        val maybe = rxMaybe {
             Observable.just("#", "O").awaitLast() + "K"
         }
 
@@ -174,7 +176,7 @@ class MaybeTest : TestBase() {
 
     @Test
     fun testExceptionFromObservable() {
-        val maybe = GlobalScope.rxMaybe {
+        val maybe = rxMaybe {
             try {
                 Observable.error<String>(RuntimeException("O")).awaitFirst()
             } catch (e: RuntimeException) {
@@ -189,7 +191,7 @@ class MaybeTest : TestBase() {
 
     @Test
     fun testExceptionFromCoroutine() {
-        val maybe = GlobalScope.rxMaybe<String> {
+        val maybe = rxMaybe<String> {
             throw IllegalStateException(Observable.just("O").awaitSingle() + "K")
         }
 
@@ -197,5 +199,99 @@ class MaybeTest : TestBase() {
             assert(it is IllegalStateException)
             assertEquals("OK", it.message)
         }
+    }
+
+    @Test
+    fun testCancelledConsumer() = runTest {
+        expect(1)
+        val maybe = rxMaybe<Int>(currentDispatcher()) {
+            expect(4)
+            try {
+                delay(Long.MAX_VALUE)
+            } catch (e: CancellationException) {
+                expect(6)
+            }
+            42
+        }
+        expect(2)
+        val timeout = withTimeoutOrNull(100) {
+            expect(3)
+            maybe.collect {
+                expectUnreached()
+            }
+            expectUnreached()
+        }
+        assertNull(timeout)
+        expect(5)
+        yield() // must cancel code inside maybe!!!
+        finish(7)
+    }
+
+    @Test
+    fun testSuppressedException() = runTest {
+        val maybe = rxMaybe(currentDispatcher()) {
+            launch(start = CoroutineStart.ATOMIC) {
+                throw TestException() // child coroutine fails
+            }
+            try {
+                delay(Long.MAX_VALUE)
+            } finally {
+                throw TestException2() // but parent throws another exception while cleaning up
+            }
+        }
+        try {
+            maybe.await()
+            expectUnreached()
+        } catch (e: TestException) {
+            assertTrue(e.suppressed[0] is TestException2)
+        }
+    }
+
+    @Test
+    fun testUnhandledException() = runTest {
+        expect(1)
+        var disposable: Disposable? = null
+        val eh = CoroutineExceptionHandler { _, t ->
+            assertTrue(t is TestException)
+            expect(5)
+        }
+        val maybe = rxMaybe(currentDispatcher() + eh) {
+            expect(4)
+            disposable!!.dispose() // cancel our own subscription, so that delay will get cancelled
+            try {
+                delay(Long.MAX_VALUE)
+            } finally {
+                throw TestException() // would not be able to handle it since mono is disposed
+            }
+        }
+        maybe.subscribe(object : MaybeObserver<Unit> {
+            override fun onSubscribe(d: Disposable) {
+                expect(2)
+                disposable = d
+            }
+            override fun onComplete() { expectUnreached() }
+            override fun onSuccess(t: Unit) { expectUnreached() }
+            override fun onError(t: Throwable) { expectUnreached() }
+        })
+        expect(3)
+        yield() // run coroutine
+        finish(6)
+    }
+
+    @Test
+    fun testFatalExceptionInSubscribe() = runTest {
+        GlobalScope.rxMaybe(Dispatchers.Unconfined + CoroutineExceptionHandler{ _, e -> assertTrue(e is LinkageError); expect(2)}) {
+            expect(1)
+            42
+        }.subscribe({ throw LinkageError() })
+        finish(3)
+    }
+
+    @Test
+    fun testFatalExceptionInSingle() = runTest {
+        GlobalScope.rxMaybe(Dispatchers.Unconfined) {
+            throw LinkageError()
+        }.subscribe({ expectUnreached()  }, { expect(1); assertTrue(it is LinkageError) })
+        finish(2)
     }
 }

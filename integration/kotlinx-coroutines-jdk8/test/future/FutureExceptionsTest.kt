@@ -2,13 +2,13 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.future
+package kotlinx.coroutines.future
 
-import kotlinx.coroutines.experimental.*
-import org.junit.Test
+import kotlinx.coroutines.*
+import org.junit.*
+import org.junit.Assert.*
 import java.io.*
 import java.util.concurrent.*
-import kotlin.test.*
 
 class FutureExceptionsTest : TestBase() {
 
@@ -50,10 +50,8 @@ class FutureExceptionsTest : TestBase() {
         testException(TestException(), { it is TestException }, { f -> f.thenApply { it + 1 } })
     }
 
-    class TestException : CompletionException("test2")
-
     private fun testException(
-        exception: Exception,
+        exception: Throwable,
         expected: ((Throwable) -> Boolean),
         transformer: (CompletableFuture<Int>) -> CompletableFuture<Int> = { it }
     ) {
@@ -65,7 +63,7 @@ class FutureExceptionsTest : TestBase() {
             future.completeExceptionally(exception)
             try {
                 chained.await()
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 assertTrue(expected(e))
             }
         }
@@ -81,7 +79,7 @@ class FutureExceptionsTest : TestBase() {
 
             try {
                 chained.await()
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 assertTrue(expected(e))
             }
         }

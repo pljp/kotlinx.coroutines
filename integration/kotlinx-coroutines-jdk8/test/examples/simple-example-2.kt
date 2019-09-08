@@ -2,16 +2,16 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.examples
+package kotlinx.coroutines.examples
 
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.future.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.*
 import java.util.concurrent.*
 
 // this function returns a CompletableFuture using Kotlin coroutines
 fun supplyTheAnswerAsync(): CompletableFuture<Int> = GlobalScope.future {
     println("We might be doing some asynchronous IO here or something else...")
-    delay(1, TimeUnit.SECONDS) // just do a non-blocking delay
+    delay(1000) // just do a non-blocking delay
     42 // The answer!
 }
 

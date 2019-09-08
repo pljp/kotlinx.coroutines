@@ -2,16 +2,16 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.rx2
+package kotlinx.coroutines.rx2
 
 import io.reactivex.*
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
 import org.hamcrest.MatcherAssert.*
 import org.hamcrest.core.*
 import org.junit.*
 import org.junit.runner.*
 import org.junit.runners.*
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 
 @RunWith(Parameterized::class)
 class IntegrationTest(
@@ -20,7 +20,7 @@ class IntegrationTest(
 ) : TestBase() {
 
     enum class Ctx {
-        MAIN        { override fun invoke(context: CoroutineContext): CoroutineContext = context },
+        MAIN        { override fun invoke(context: CoroutineContext): CoroutineContext = context.minusKey(Job) },
         DEFAULT     { override fun invoke(context: CoroutineContext): CoroutineContext = Dispatchers.Default },
         UNCONFINED  { override fun invoke(context: CoroutineContext): CoroutineContext = Dispatchers.Unconfined };
 
@@ -50,7 +50,7 @@ class IntegrationTest(
         assertNSE { observable.awaitLast() }
         assertNSE { observable.awaitSingle() }
         var cnt = 0
-        observable.consumeEach {
+        observable.collect {
             cnt++
         }
         assertThat(cnt, IsEqual(0))
@@ -58,7 +58,7 @@ class IntegrationTest(
 
     @Test
     fun testSingle() = runBlocking {
-        val observable = CoroutineScope(ctx(coroutineContext)).rxObservable {
+        val observable = rxObservable(ctx(coroutineContext)) {
             if (delay) delay(1)
             send("OK")
         }
@@ -69,7 +69,7 @@ class IntegrationTest(
         assertThat(observable.awaitLast(), IsEqual("OK"))
         assertThat(observable.awaitSingle(), IsEqual("OK"))
         var cnt = 0
-        observable.consumeEach {
+        observable.collect {
             assertThat(it, IsEqual("OK"))
             cnt++
         }
@@ -101,8 +101,7 @@ class IntegrationTest(
     fun testCancelWithoutValue() = runTest {
         val job = launch(Job(), start = CoroutineStart.UNDISPATCHED) {
             rxObservable<String> {
-                yield()
-                expectUnreached()
+                hang {  }
             }.awaitFirst()
         }
 
@@ -127,7 +126,7 @@ class IntegrationTest(
 
     private suspend fun checkNumbers(n: Int, observable: Observable<Int>) {
         var last = 0
-        observable.consumeEach {
+        observable.collect {
             assertThat(it, IsEqual(++last))
         }
         assertThat(last, IsEqual(n))

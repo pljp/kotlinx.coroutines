@@ -1,6 +1,326 @@
 # Change log for kotlinx.coroutines
 
+## Version 1.3.0
+
+### Flow
+
+This version is the first stable release with [`Flow`](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-flow/index.html) API.
+
+All `Flow` API not marked with `@FlowPreview` or `@ExperimentalCoroutinesApi` annotations are stable and here to stay.
+Flow declarations marked with `@ExperimentalCoroutinesApi` have [the same guarantees](/docs/compatibility.md#experimental-api) as regular experimental API.
+Please note that API marked with `@FlowPreview` have [weak guarantees](/docs/compatibility.md#flow-preview-api) on source, binary and semantic compatibility.
+
+### Changelog
+
+* A new [guide section](/docs/flow.md) about Flow.
+* `CoroutineDispatcher.asExecutor` extension (#1450).
+* Fixed bug when `select` statement could report the same exception twice (#1433).
+* Fixed context preservation in `flatMapMerge` in a case when collected values were immediately emitted to another flow (#1440).
+* Reactive Flow integrations enclosing files are renamed for better interoperability with Java.
+* Default buffer size in all Flow operators is increased to 64.
+* Kotlin updated to 1.3.50.
+
+## Version 1.3.0-RC2
+
+### Flow improvements
+* Operators for UI programming are reworked for the sake of consistency, naming scheme for operator overloads is introduced:
+   * `combineLatest` is deprecated in the favor of `combine`.
+   * `combineTransform` operator for non-trivial transformations (#1224).
+   * Top-level `combine` and `combineTransform` overloads for multiple flows (#1262). 
+   * `switchMap` is deprecated. `flatMapLatest`, `mapLatest` and `transformLatest` are introduced instead (#1335).
+   * `collectLatest` terminal operator (#1269).
+
+* Improved cancellation support in `flattenMerge` (#1392).
+* `channelFlow` cancellation does not leak to the parent (#1334).
+* Fixed flow invariant enforcement for `suspend fun main` (#1421).
+* `delayEach` and `delayFlow` are deprecated (#1429).
+
+### General changes
+* Integration with Reactor context
+    * Propagation of the coroutine context of `await` calls into Mono/Flux builder.
+    * Publisher.asFlow propagates coroutine context from `collect` call to the Publisher.
+    * New `Flow.asFlux ` builder.
+
+* ServiceLoader-code is adjusted to avoid I/O on the Main thread on newer (3.6.0+) Android toolchain.
+* Stacktrace recovery support for minified builds on Android (#1416).
+* Guava version in `kotlinx-coroutines-guava` updated to `28.0`.
+* `setTimeout`-based JS dispatcher for platforms where `process` is unavailable (#1404).
+* Native, JS and common modules are added to `kotlinx-coroutines-bom`.
+* Fixed bug with ignored `acquiredPermits` in `Semaphore` (#1423).
+
+## Version 1.3.0-RC
+
+### Flow
+
+* Core `Flow` API is promoted to stable
+* New basic `Flow` operators: `withIndex`, `collectIndexed`, `distinctUntilChanged` overload
+* New core `Flow` operators: `onStart` and `onCompletion`
+* `ReceiveChannel.consumeAsFlow` and `emitAll` (#1340)
+
+### General changes
+
+* Kotlin updated to 1.3.41
+* Added `kotlinx-coroutines-bom` with Maven Bill of Materials (#1110)
+* Reactive integrations are seriously improved
+  * All builders now are top-level functions instead of extensions on `CoroutineScope` and prohibit `Job` instance in their context to simplify lifecycle management
+  * Fatal exceptions are handled consistently (#1297)
+  * Integration with Reactor Context added (#284)
+* Stacktrace recovery for `suspend fun main` (#1328)
+* `CoroutineScope.cancel` extension with message (#1338)
+* Protection against non-monotonic clocks in `delay` (#1312)
+* `Duration.ZERO` is handled properly in JDK 8 extensions (#1349)
+* Library code is adjusted to be more minification-friendly 
+
+## Version 1.3.0-M2
+
+ * Kotlin updated to 1.3.40.
+ * `Flow` exception transparency concept.
+ * New declarative `Flow` operators: `onCompletion`, `catch`, `retryWhen`, `launchIn`. `onError*` operators are deprecated in favour of `catch`. (#1263)
+ * `Publisher.asFlow` is integrated with `buffer` operator.
+ * `Publisher.openSubscription` default request size is `1` instead of `0` (#1267).
+
+## Version 1.3.0-M1
+
+Flow:
+ * Core `Flow` interfaces and operators are graduated from preview status to experimental. 
+ * Context preservation invariant rework (#1210).
+    * `channelFlow` and `callbackFlow` replacements for `flowViaChannel` for concurrent flows or callback-based APIs.
+    * `flow` prohibits emissions from non-scoped coroutines by default and recommends to use `channelFlow` instead to avoid most of the concurrency-related bugs.
+ * Flow cannot be implemented directly 
+    * `AbstractFlow` is introduced for extension (e.g. for managing state) and ensures all context preservation invariants.
+ * Buffer size is decoupled from all operators that imply channel usage (#1233)
+    * `buffer` operator can be used to adjust buffer size of any buffer-dependent operator (e.g. `channelFlow`, `flowOn` and `flatMapMerge`).
+    * `conflate` operator is introduced.
+ * Flow performance is significantly improved.
+ * New operators: `scan`, `scanReduce`, `first`, `emitAll`.
+ * `flowWith` and `flowViaChannel` are deprecated.
+ * `retry` ignores cancellation exceptions from upstream when the flow was externally cancelled (#1122).
+ * `combineLatest` overloads for multiple flows (#1193).
+ * Fixed numerical overflow in `drop` operator.
+
+Channels:
+ * `consumeEach` is promoted to experimental API (#1080).
+ * Conflated channels always deliver the latest value after closing (#332, #1235).
+ * Non-suspending `ChannelIterator.next` to improve iteration performance (#1162).
+ * Channel exception types are consistent with `produce` and are no longer swallowed as cancellation exceptions in case of programmatic errors (#957, #1128).
+ * All operators on channels (that were prone to coroutine leaks) are deprecated in the favor of `Flow`.
+
+General changes:
+ * Kotlin updated to 1.3.31
+ * `Semaphore` implementation (#1088)
+ * Loading of `Dispatchers.Main` is tweaked so the latest version of R8 can completely remove I/O when loading it (#1231).
+ * Performace of all JS dispatchers is significantly improved (#820).
+ * `withContext` checks cancellation status on exit to make reasoning about sequential concurrent code easier (#1177).
+ * Consistent exception handling mechanism for complex hierarchies (#689).
+ * Convenient overload for `CoroutinesTimeout.seconds` (#1184).
+ * Fix cancellation bug in onJoin (#1130).
+ * Prevent internal names clash that caused errors for ProGuard (#1159).
+ * POSIX's `nanosleep` as `delay` in `runBlocking ` in K/N (#1225).
+
+## Version 1.2.2
+
+* Kotlin updated to 1.3.40.
+
+## Version 1.2.1
+
+Major:
+  * Infrastructure for testing coroutine-specific code in `kotlinx-coroutines-test`: `runBlockingTest`, `TestCoroutineScope` and `TestCoroutineDispatcher`, contributed by Sean McQuillan (@objcode). Obsolete `TestCoroutineContext` from `kotlinx-coroutines-core` is deprecated.
+  * `Job.asCompletableFuture` extension in jdk8 module (#1113).
+
+Flow improvements:
+  * `flowViaChannel` rework: block parameter is no longer suspending, but provides `CoroutineScope` receiver and allows conflated channel (#1081, #1112).
+  * New operators: `switchMap`, `sample`, `debounce` (#1107).
+  * `consumerEach` is deprecated on `Publisher`, `ObservableSource` and `MaybeSource`, `collect` extension is introduced instead (#1080).
+
+Other:
+  * Race in Job.join and concurrent cancellation is fixed (#1123).
+  * Stacktrace recovery machinery improved: cycle detection works through recovered exceptions, cancellation exceptions are recovered on cancellation fast-path.
+  * Atomicfu-related bug fixes: publish transformed artifacts, do not propagate transitive atomicfu dependency (#1064, #1116).
+  * Publication to NPM fixed (#1118).
+  * Misplaced resources are removed from the final jar (#1131).
+
+## Version 1.2.0
+
+ * Kotlin updated to 1.3.30.
+ * New API: `CancellableContinuation.resume` with `onCancelling` lambda (#1044) to consistently handle closeable resources.
+ * Play services task version updated to 16.0.1.
+ * `ReceiveChannel.isEmpty` is no longer deprecated
+
+A lot of `Flow` improvements:
+  * Purity property is renamed to context preservation and became more restrictive.
+  * `zip` and `combineLatest` operators.
+  * Integration with RxJava2
+  * `flatMap`, `merge` and `concatenate` are replaced with `flattenConcat`, `flattenMerge`, `flatMapConcat` and `flatMapMerge`.
+  * Various documentation improvements and minor bug fixes.
+  
+Note that `Flow` **is not** leaving its [preview status](/docs/compatibility.md#flow-preview-api).
+  
+## Version 1.2.0-alpha-2
+
+This release contains major [feature preview](/docs/compatibility.md#flow-preview-api): cold streams aka `Flow` (#254). 
+
+Performance:
+* Performance of `Dispatcher.Main` initialization is significantly improved (#878).
+
+## Version 1.2.0-alpha
+
+* Major debug agent improvements. Real stacktraces are merged with coroutine stacktraces for running coroutines, merging heuristic is improved, API is cleaned up and is on its road to stabilization (#997).
+* `CoroutineTimeout` rule or JUnit4 is introduced to simplify coroutines debugging (#938).
+* Stacktrace recovery improvements. Exceptions with custom properties are no longer copied, `CopyableThrowable` interface is introduced, machinery is [documented](https://github.com/Kotlin/kotlinx.coroutines/blob/develop/docs/debugging.md) (#921, #950).
+* `Dispatchers.Unconfined`, `MainCoroutineDispatcher.immediate`, `MainScope` and `CoroutineScope.cancel` are promoted to stable API (#972).
+* `CompletableJob` is introduced (#971).
+* Structured concurrency is integrated into futures and listenable futures (#1008).
+* `ensurePresent` and `isPresent` extensions for `ThreadLocal` (#1028).
+* `ensureActive` extensions for `CoroutineContext`, `CoroutineScope` and `Job` (#963).
+* `SendChannel.isFull` and `ReceiveChannel.isEmpty` are deprecated (#1053).
+* `withContext` checks cancellation on entering (#962).
+* Operator `invoke` on `CoroutineDispatcher` (#428).
+* Java 8 extensions for `delay` and `withTimeout` now properly handle too large values (#428).
+* A global exception handler for fatal exceptions in coroutines is introduced (#808, #773).
+* Major improvements in cancellation machinery and exceptions delivery consistency. Cancel with custom exception is completely removed.
+* Kotlin version is updated to 1.3.21.
+* Do not use private API on newer Androids to handle exceptions (#822).
+
+Bug fixes:
+* Proper `select` support in debug agent (#931).
+* Proper `supervisorScope` support in debug agent (#915).
+* Throwing `initCause` does no longer trigger an internal error (#933).
+* Lazy actors are started when calling `close` in order to cleanup their resources (#939).
+* Minor bugs in reactive integrations are fixed (#1008).
+* Experimental scheduler shutdown sequence is fixed (#990).
+
+## Version 1.1.1
+
+* Maintenance release, no changes in the codebase
+* Kotlin is updated to 1.3.20
+* Gradle is updated to 4.10
+* Native module is published with Gradle metadata v0.4 
+
+## Version 1.1.0
+
+* Kotlin version updated to 1.3.11.
+* Resumes to `CancellableContinuation` in the final state produce `IllegalStateException` (#901). This change does not affect #830, races between resume and cancellation do not lead to an exceptional situation.
+* `runBlocking` is integrated with `Dispatchers.Unconfined` by sharing an internal event loop. This change does not affect the semantics of the previously correct code but allows to mix multiple `runBlocking` and unconfined tasks (#860).
+
+## Version 1.1.0-alpha
+
+### Major improvements in coroutines testing and debugging
+* New module: [`kotlinx-coroutines-debug`](https://github.com/Kotlin/kotlinx.coroutines/blob/master/core/kotlinx-coroutines-debug/README.md). Debug agent that improves coroutines stacktraces, allows to print all active coroutines and its hierarchies and can be installed as Java agent.
+* New module: [`kotlinx-coroutines-test`](https://github.com/Kotlin/kotlinx.coroutines/blob/master/core/kotlinx-coroutines-test/README.md). Allows setting arbitrary `Dispatchers.Main` implementation for tests (#810).
+* Stacktrace recovery mechanism. Exceptions from coroutines are recovered from current coroutine stacktraces to simplify exception diagnostic. Enabled in debug mode, controlled by `kotlinx.coroutines.debug` system property (#493).
+
+### Other improvements
+* `MainScope` factory and `CoroutineScope.cancel` extension (#829). One line `CoroutineScope` integration!
+* `CancellableContinuation` race between `resumeWithException` and `cancel` is addressed, exceptions during cancellation are no longer reported to exception handler (#830, #892).
+* `Dispatchers.Default` now consumes much less CPU on JVM (#840).
+* Better diagnostic and fast failure if an uninitialized dispatcher is used (#880).
+* Conflated channel becomes linearizable.
+* Fixed inconsistent coroutines state when the result of the coroutine had type `DisposableHandle` (#835).
+* Fixed `JavaFx` initialization bug (#816).
+* `TimeoutCancellationException` is thrown by `withTimeout` instead of `CancellationException` if negative timeout is supplied (#870).
+* Kotlin/Native single-threaded workers support: coroutines can be safely used in multiple independent K/N workers.
+* jsdom support in `Dispatchers.Default` on JS.
+* rxFlowable generic parameter is now restricted with Any.
+* Guava 27 support in `kotlinx-coroutines-guava`.
+* Coroutines are now built with progressive mode.
+* Various fixes in the documentation.
+
+## Version 1.0.1
+ 
+* Align `publisher` implementation with Reactive TCK.
+* Reimplement `future` coroutine builders on top of `AbstractCoroutine`	(#751).
+* Performance optimizations in `Dispatchers.Default` and `Dispatchers.IO`.
+* Use only public API during `JavaFx` instantiation, fixes warnings on Java 9 and build on Java 11 (#463).
+* Updated contract of `CancellableContinuation.resumeWithException` (documentation fix, see #712).
+* Check cancellation on fast-path of all in-place coroutine builders (`withContext`, `coroutineScope`, `supervisorScope`, `withTimeout` and `withTimeoutOrNull`).
+* Add optional prefix to thread names of `ExperimentalCoroutineDispatcher` (#661).
+* Fixed bug when `ExperimentalCoroutineDispatcher` could end up in inconsistent state if `Thread` constructor throws an exception (#748).
+
+## Version 1.0.0
+
+* All Kotlin dependencies updated to 1.3 release version.
+* Fixed potential memory leak in `HandlerDispatcher.scheduleResumeAfterDelay`, thanks @cbeyls.
+* `yield` support for `Unconfined` and immediate dispatchers (#737).
+* Various documentation improvements.
+
+## Version 1.0.0-RC1
+
+* Coroutines API is updated to Kotlin 1.3.
+* Deprecated API is removed or marked as `internal`.
+* Experimental and internal coroutine API is marked with corresponding `kotlin.experimental.Experimental` annotation. If you are using `@ExperimentalCoroutinesApi` or `@InternalCoroutinesApi` you should explicitly opt-in, otherwise compilation warning (or error) will be produced. 
+* `Unconfined` dispatcher (and all dispatchers which support immediate invocation) forms event-loop on top of current thread, thus preventing all `StackOverflowError`s. `Unconfined` dispatcher is now much safer for the general use and may leave its experimental status soon (#704).
+* Significantly improved performance of suspending hot loops in `kotlinx.coroutines` (#537).
+* Proguard rules are embedded into coroutines JAR to assist jettifier (#657)
+* Fixed bug in shutdown sequence of `runBlocking` (#692).
+* `ReceiveChannel.receiveOrNull` is marked as obsolete and deprecated.
+* `Job.cancel(cause)` and `ReceiveChannel.cancel(cause)` are deprecated, `cancel()` returns `Unit` (#713).
+
+## Version 0.30.2
+
+* `Dispatchers.Main` is instantiated lazily (see #658 and #665).
+* Blocking coroutine dispatcher views are now shutdown properly (#678).
+* Prevent leaking Kotlin 1.3 from atomicfu dependency (#659).
+* Thread-pool based dispatcher factories are marked as obsolete (#261).
+* Fixed exception loss on `withContext` cancellation (#675).   
+
+## Version 0.30.1
+
+Maintenance release:
+* Added `Dispatchers.Main` to common dispatchers, which can be used from Android, Swing and JavaFx projects if a corresponding integration library is added to dependencies. 
+* With `Dispatchers.Main` improvement tooling bug in Android Studio #626 is mitigated, so Android users now can safely start the migration to the latest `kotlinx.coroutines` version.
+* Fixed bug with thread unsafety of shutdown sequence in `EventLoop`.
+* Experimental coroutine dispatcher now has `close` contract similar to Java `Executor`, so it can be safely instantiated and closed multiple times (affects only unit tests).
+* Atomicfu version is updated with fixes in JS transformer (see #609)
+
+## Version 0.30.0
+
+* **[Major]** Further improvements in exception handling &mdash; no failure exception is lost. 
+  * `async` and async-like builders cancel parent on failure (it affects `CompletableDeferred`, and all reactive integration builders).
+  * This makes parallel decomposition exception-safe and reliable without having to rember about `awaitAll` (see #552).
+  * `Job()` wih parent now also cancels parent on failure consistently with other scopes.
+  * All coroutine builders and `Job` implementations propagate failure to the parent unless it is a `CancellationException`. 
+  * Note, "scoping" builders don't "cancel the parent" verbatim, but rethrow the corresponding exception to the caller for handling.
+  * `SupervisorJob()` and `supervisorScope { ... }` are introduced, allowing for a flexible implementation of custom exception-handling policies, see a [new section in the guide on supervision](docs/exception-handling.md#supervision).
+  * Got rid of `awaitAll` in documentation and rewrote `currentScope` section (see #624).
+* **[Major]** Coroutine scheduler is used for `Dispatchers.Default` by default instead of deprecated `CommonPool`.
+  * "`DefaultDispatcher`" is used as a public name of the default impl (you'll see it thread names and in the guide).
+  * `-Dkotlinx.coroutines.scheduler=off` can be used to switch back to `CommonPool` for a time being (until deprecated CommonPool is removed).  
+* Make `CoroutineStart.ATOMIC` experimental as it covers important use-case with resource cleanup in finally block (see #627).
+* Restored binary compatibility of `Executor.asCoroutineDispatcher` (see #629).
+* Fixed OOM in thread-pool dispatchers (see #571).
+* Check for cancellation when starting coroutine with `Dispatchers.Unconfined` (see #621).
+* A bunch of various performance optimizations and docs fixes, including contributions from @AlexanderPrendota, @PaulWoitaschek.
+
+## Version 0.27.0 
+
+* **[Major]** Public API revision. All public API was reviewed and marked as preparation to `1.0` release:
+   1. `@Deprecated` API. All API marked as deprecated will be removed in 1.0 release without replacement.
+   2. `@ExperimentalCoroutinesApi` API. This API is experimental and may change in the future, but migration mechanisms will be provided. Signature, binary compatibility and semantics can be changed.
+   3. `@InternalCoroutinesApi`. This API is intended to be used **only** from within `kotlinx.coroutines`. It can and will be changed, broken 
+       and removed in the future releases without any warnings and migration aids. If you find yourself using this API, it is better to report
+       your use-case to Github issues, so decent, stable and well-tested alternative can be provided.
+   4. `@ObsoleteCoroutinesApi`. This API has serious known flaws and will be replaced with a better alternative in the nearest releases.
+   5. Regular public API. This API is proven to be stable and is not going to be changed. If at some point it will be discovered that such API
+      has unfixable design flaws, it will be gradually deprecated with proper replacement and migration aid, but won't be removed for at least a year.
+* **[Major]** Job state machine is reworked. It includes various performance improvements, fixes in 
+data-races which could appear in a rare circumstances and consolidation of cancellation and exception handling.
+Visible consequences of include more robust exception handling for large coroutines hierarchies and for different kinds of `CancellationException`, transparent parallel decomposition and consistent view of coroutines hierarchy in terms of its state (see #220 and #585).
+* NIO, Quasar and Rx1 integration modules are removed with no replacement (see #595, #601, #603).
+* `withContext` is now aligned with structured concurrency and awaits for all launched tasks, its performance is significantly improved (see #553 and #617).
+* Added integration module with Play Services Task API. Thanks @SUPERCILEX and @lucasvalenteds for the contribution!
+* Integration with Rx2 now respects nullability in type constraints (see #347). Thanks @Dmitry-Borodin for the contribution!
+* `CompletableFuture.await` and `ListenableFuture.await` now propagate cancellation to the future (see #611).
+* Cancellation of `runBlocking` machinery is improved (see #589).
+* Coroutine guide is restructured and split to multiple files for the sake of simplicity.
+* `CoroutineScope` factory methods add `Job` if it is missing from the context to enforce structured concurrency (see #610).
+* `Handler.asCoroutineDispatcher` has a `name` parameter for better debugging (see #615).
+* Fixed bug when `CoroutineSchedule` was closed from one of its threads (see #612).
+* Exceptions from `CoroutineExceptionHandler` are reported by default exception handler (see #562).
+* `CoroutineName` is now available from common modules (see #570).
+* Update to Kotlin 1.2.70.
+
 ## Version 0.26.1
+
 * Android `Main` dispatcher is `async` by default which may significantly improve UI performance. Contributed by @JakeWharton (see #427).
 * Fixed bug when lazily-started coroutine with registered cancellation handler was concurrently started and cancelled. 
 * Improved termination sequence in IO dispatcher.
@@ -8,13 +328,14 @@
 * Various fixes in the documentation. Thanks to @SUPERCILEX, @yorlov, @dualscyther and @soudmaijer!
 
 ## Version 0.26.0
+
 * Major rework of `kotlinx.coroutines` concurrency model (see #410 for a full explanation of the rationale behind this change):
   * All coroutine builders are now extensions on `CoroutineScope` and inherit its `coroutineContext`. Standalone builders are deprecated.
   * As a consequence, all nested coroutines launched via builders now automatically establish parent-child relationship and inherit `CoroutineDispatcher`.
   * All coroutine builders use `Dispatchers.Default` by default if `CoroutineInterceptor` is not present in their context.
-  * [CoroutineScope](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-coroutine-scope/) became the first-class citizen in `kolinx.coroutines`.
+  * [CoroutineScope](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope/) became the first-class citizen in `kolinx.coroutines`.
   * `withContext` `block` argument has `CoroutineScope` as a receiver.
-  * [GlobalScope](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/-global-scope/) is introduced to simplify migration to new API and to launch global-level coroutines.
+  * [GlobalScope](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-global-scope/) is introduced to simplify migration to new API and to launch global-level coroutines.
   * `currentScope` and `coroutineScope` builders are introduced to extract and provide `CoroutineScope`.
   * Factory methods to create `CoroutineScope` from `CoroutineContext` are introduced.
   * `CoroutineScope.isActive` became an extension property.
@@ -33,7 +354,7 @@
 * Distribution no longer uses multi-version jar which is not supported on Android (see #510).
 * JS version of the library does not depend on AtomicFu anymore:
   All the atomic boxes in JS are fully erased.
-* Note, that versions 0.25.1-2 are skipped for technical reasons (they were not fully released).
+* Note that versions 0.25.1-2 are skipped for technical reasons (they were not fully released).
 
 ## Version 0.25.0
 
@@ -52,7 +373,7 @@
 * Introduced IO dispatcher to offload blocking I/O-intensive tasks (see #79).
 * Introduced `ExecutorCoroutineDispatcher` instead of `CloseableCoroutineDispatcher` (see #385). 
 * Built with Kotlin 1.2.61 and Kotlin/Native 0.8.2.
-* JAR files for `kotlinx-coroutines` are now [JEP 238](http://openjdk.java.net/jeps/238) multi-release JAR files.
+* JAR files for `kotlinx-coroutines` are now [JEP 238](https://openjdk.java.net/jeps/238) multi-release JAR files.
   * On JDK9+ `VarHandle` is used for atomic operations instead of `Atomic*FieldUpdater` for better performance.
   * See [AtomicFu](https://github.com/Kotlin/kotlinx.atomicfu/blob/master/README.md) project for details.
 * Reversed addition of `BlockingChecker` extension point to control where `runBlocking` can be used (see #227).
@@ -89,7 +410,7 @@
 * Includes multiple fixes to documentation contributed by @paolop, @SahilLone, @rocketraman, @bdavisx, @mtopolnik, @Groostav.   
 * Experimental coroutines scheduler preview (JVM only):
   * Written from scratch and optimized for communicating coroutines.
-  * Performs significantly better than ForkJoinPool on coroutine benchmarks and for connected applications with [ktor](http://ktor.io).
+  * Performs significantly better than ForkJoinPool on coroutine benchmarks and for connected applications with [ktor](https://ktor.io).
   * Supports automatic creating of new threads for blocking operations running on the same thread pool (with an eye on solving #79), but there is no stable public API for it just yet.
   * For preview, run JVM with `-Dkotlinx.coroutines.scheduler` option. In this case `DefaultDispatcher` is set to new experimental scheduler instead of FJP-based `CommonPool`.
   * Submit your feedback to issue #261.
@@ -382,7 +703,7 @@
 * Fixed bug in internal class LockFreeLinkedList that resulted in ISE under stress in extremely rare circumstances.
 * Integrations:
   * [quasar](integration/kotlinx-coroutines-quasar): Introduced integration with suspendable JVM functions
-    that are instrumented with [Parallel Universe Quasar](http://docs.paralleluniverse.co/quasar/) 
+    that are instrumented with [Parallel Universe Quasar](https://docs.paralleluniverse.co/quasar/) 
     (thanks to the help of @pron). 
   * [reactor](reactive/kotlinx-coroutines-reactor): Replaced deprecated `setCancellation` with `onDipose` and 
     updated to Aluminium-SR3 release (courtesy of @yxf07, see #96) 
@@ -542,7 +863,7 @@
 ## Version 0.11-rc
 
 * `select` expression with onJoin/onAwait/onSend/onReceive clauses.
-* `Mutex` is moved to `kotlinx.coroutines.experimental.sync` package.
+* `Mutex` is moved to `kotlinx.coroutines.sync` package.
 * `ClosedSendChannelException` is a subclass of `CancellationException` now.
 * New sections on "Shared mutable state and concurrency" and "Select expression" 
   in [coroutines guide](docs/coroutines-guide.md).

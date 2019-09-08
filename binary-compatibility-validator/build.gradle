@@ -13,6 +13,8 @@ dependencies {
     testCompile "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
 
     testArtifacts project(':kotlinx-coroutines-core')
+    testArtifacts project(':kotlinx-coroutines-test')
+    testArtifacts project(':kotlinx-coroutines-debug')
 
     testArtifacts project(':kotlinx-coroutines-reactive')
     testArtifacts project(':kotlinx-coroutines-reactor')
@@ -20,9 +22,8 @@ dependencies {
 
     testArtifacts project(':kotlinx-coroutines-guava')
     testArtifacts project(':kotlinx-coroutines-jdk8')
-    testArtifacts project(':kotlinx-coroutines-nio')
-    testArtifacts project(':kotlinx-coroutines-quasar')
     testArtifacts project(':kotlinx-coroutines-slf4j')
+    testArtifacts project(path: ':kotlinx-coroutines-play-services', configuration: 'default')
 
     testArtifacts project(':kotlinx-coroutines-android')
     testArtifacts project(':kotlinx-coroutines-javafx')

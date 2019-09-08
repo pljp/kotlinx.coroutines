@@ -2,13 +2,14 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.reactor
+package kotlinx.coroutines.reactor
 
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.reactive.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.reactive.*
 import org.hamcrest.core.*
 import org.junit.*
 import org.junit.Assert.*
+import org.reactivestreams.*
 import reactor.core.publisher.*
 import java.time.Duration.*
 
@@ -21,14 +22,14 @@ class MonoTest : TestBase() {
     @Test
     fun testBasicSuccess() = runBlocking {
         expect(1)
-        val mono = mono {
+        val mono = mono(currentDispatcher()) {
             expect(4)
             "OK"
         }
         expect(2)
         mono.subscribe { value ->
             expect(5)
-            Assert.assertThat(value, IsEqual("OK"))
+            assertThat(value, IsEqual("OK"))
         }
         expect(3)
         yield() // to started coroutine
@@ -38,7 +39,7 @@ class MonoTest : TestBase() {
     @Test
     fun testBasicFailure() = runBlocking {
         expect(1)
-        val mono = mono {
+        val mono = mono(currentDispatcher()) {
             expect(4)
             throw RuntimeException("OK")
         }
@@ -47,8 +48,8 @@ class MonoTest : TestBase() {
             expectUnreached()
         }, { error ->
             expect(5)
-            Assert.assertThat(error, IsInstanceOf(RuntimeException::class.java))
-            Assert.assertThat(error.message, IsEqual("OK"))
+            assertThat(error, IsInstanceOf(RuntimeException::class.java))
+            assertThat(error.message, IsEqual("OK"))
         })
         expect(3)
         yield() // to started coroutine
@@ -58,7 +59,7 @@ class MonoTest : TestBase() {
     @Test
     fun testBasicEmpty() = runBlocking {
         expect(1)
-        val mono = mono {
+        val mono = mono(currentDispatcher()) {
             expect(4)
             null
         }
@@ -74,7 +75,7 @@ class MonoTest : TestBase() {
     @Test
     fun testBasicUnsubscribe() = runBlocking {
         expect(1)
-        val mono = mono {
+        val mono = mono(currentDispatcher()) {
             expect(4)
             yield() // back to main, will get cancelled
             expectUnreached()
@@ -96,7 +97,7 @@ class MonoTest : TestBase() {
 
     @Test
     fun testMonoNoWait() {
-        val mono = GlobalScope.mono {
+        val mono = mono {
             "OK"
         }
 
@@ -112,7 +113,7 @@ class MonoTest : TestBase() {
 
     @Test
     fun testMonoEmitAndAwait() {
-        val mono = GlobalScope.mono {
+        val mono = mono {
             Mono.just("O").awaitSingle() + "K"
         }
 
@@ -123,7 +124,7 @@ class MonoTest : TestBase() {
 
     @Test
     fun testMonoWithDelay() {
-        val mono = GlobalScope.mono {
+        val mono = mono {
             Flux.just("O").delayElements(ofMillis(50)).awaitSingle() + "K"
         }
 
@@ -134,7 +135,7 @@ class MonoTest : TestBase() {
 
     @Test
     fun testMonoException() {
-        val mono = GlobalScope.mono {
+        val mono = mono {
             Flux.just("O", "K").awaitSingle() + "K"
         }
 
@@ -145,7 +146,7 @@ class MonoTest : TestBase() {
 
     @Test
     fun testAwaitFirst() {
-        val mono = GlobalScope.mono {
+        val mono = mono {
             Flux.just("O", "#").awaitFirst() + "K"
         }
 
@@ -156,7 +157,7 @@ class MonoTest : TestBase() {
 
     @Test
     fun testAwaitLast() {
-        val mono = GlobalScope.mono {
+        val mono = mono {
             Flux.just("#", "O").awaitLast() + "K"
         }
 
@@ -167,7 +168,7 @@ class MonoTest : TestBase() {
 
     @Test
     fun testExceptionFromFlux() {
-        val mono = GlobalScope.mono {
+        val mono = mono {
             try {
                 Flux.error<String>(RuntimeException("O")).awaitFirst()
             } catch (e: RuntimeException) {
@@ -182,7 +183,7 @@ class MonoTest : TestBase() {
 
     @Test
     fun testExceptionFromCoroutine() {
-        val mono = GlobalScope.mono<String> {
+        val mono = mono<String> {
             throw IllegalStateException(Flux.just("O").awaitSingle() + "K")
         }
 
@@ -190,5 +191,61 @@ class MonoTest : TestBase() {
             assert(it is IllegalStateException)
             assertEquals("OK", it.message)
         }
+    }
+
+    @Test
+    fun testSuppressedException() = runTest {
+        val mono = mono(currentDispatcher()) {
+            launch(start = CoroutineStart.ATOMIC) {
+                throw TestException() // child coroutine fails
+            }
+            try {
+                delay(Long.MAX_VALUE)
+            } finally {
+                throw TestException2() // but parent throws another exception while cleaning up
+            }
+        }
+        try {
+            mono.awaitSingle()
+            expectUnreached()
+        } catch (e: TestException) {
+            assertTrue(e.suppressed[0] is TestException2)
+        }
+    }
+
+    @Test
+    fun testUnhandledException() = runTest {
+        expect(1)
+        var subscription: Subscription? = null
+        val mono = mono(currentDispatcher() + CoroutineExceptionHandler { _, t ->
+            assertTrue(t is TestException)
+            expect(5)
+
+        }) {
+            expect(4)
+            subscription!!.cancel() // cancel our own subscription, so that delay will get cancelled
+            try {
+                delay(Long.MAX_VALUE)
+            } finally {
+                throw TestException() // would not be able to handle it since mono is disposed
+            }
+        }
+        mono.subscribe(object : Subscriber<Unit> {
+            override fun onSubscribe(s: Subscription) {
+                expect(2)
+                subscription = s
+            }
+            override fun onNext(t: Unit?) { expectUnreached() }
+            override fun onComplete() { expectUnreached() }
+            override fun onError(t: Throwable) { expectUnreached() }
+        })
+        expect(3)
+        yield() // run coroutine
+        finish(6)
+    }
+
+    @Test
+    fun testIllegalArgumentException() {
+        assertFailsWith<IllegalArgumentException> { mono(Job()) { } }
     }
 }

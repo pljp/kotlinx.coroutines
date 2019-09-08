@@ -1,28 +1,25 @@
 <!--- INCLUDE .*/example-([a-z]+)-([0-9a-z]+)\.kt 
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 // This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.experimental.guide.$$1$$2
-
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.*
+package kotlinx.coroutines.guide.$$1$$2
 -->
-<!--- KNIT     ../core/kotlinx-coroutines-core/test/guide/.*\.kt -->
-<!--- TEST_OUT ../core/kotlinx-coroutines-core/test/guide/test/ChannelsGuideTest.kt
+<!--- KNIT     ../kotlinx-coroutines-core/jvm/test/guide/.*\.kt -->
+<!--- TEST_OUT ../kotlinx-coroutines-core/jvm/test/guide/test/ChannelsGuideTest.kt
 // This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.experimental.guide.test
+package kotlinx.coroutines.guide.test
 
 import org.junit.Test
 
 class ChannelsGuideTest {
 --> 
-## 目次
+**目次**
 
 <!--- TOC -->
 
-* [チャネル（実験的）](#チャネル（実験的）)
+* [チャネル](#チャネル)
   * [チャネルの基礎](#チャネルの基礎)
   * [チャネルのクローズと反復](#チャネルのクローズと反復)
   * [チャネルプロデューサーの作成](#チャネルプロデューサーの作成)
@@ -36,22 +33,24 @@ class ChannelsGuideTest {
 
 <!--- END_TOC -->
 
-
-
-
-## チャネル（実験的）
+## チャネル
 
 遅延値は、コルーチン間で単一の値を転送する便利な方法を提供します。
 チャネルは、ストリーム値を転送する方法を提供します。
-
-> チャンネルは `kotlinx.coroutines` の実験的な機能です。これらのAPIは、 `kotlinx.coroutines` ライブラリの今後のアップデートで、潜在的に大きな変化を伴って進化することが期待されています。
 
 ### チャネルの基礎
 
 [Channel]は概念的には `BlockingQueue` に非常によく似ています。主な違いの1つは、ブロックする `put` 操作の代わりにサスペンド[send][SendChannel.send]、ブロックする `take` 操作の代わりにサスペンド[receive][ReceiveChannel.receive]を持っていることです。
 
+
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+
+fun main() = runBlocking {
+//sampleStart
     val channel = Channel<Int>()
     launch {
         // これはCPU使用量が多い計算や非同期ロジックかもしれないが、ここではただ5つの平方を送るだけ
@@ -60,10 +59,13 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     // ここで受け取った5つの整数をプリントする
     repeat(5) { println(channel.receive()) }
     println("Done!")
+//sampleEnd
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-channel-01.kt)で完全なコードを取得できます
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-channel-01.kt)で完全なコードを取得できます
 
 このコードの出力は以下の通りです。
 
@@ -86,8 +88,14 @@ Done!
 概念的には、[close][SendChannel.close]は特別なクローズトークンをチャネルに送信するようなものです。
 このクローズトークンが受信されるとすぐに反復が停止し、クローズする前に以前に送信されたすべての要素が受信されるという保証があります。
 
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+
+fun main() = runBlocking {
+//sampleStart
     val channel = Channel<Int>()
     launch {
         for (x in 1..5) channel.send(x * x)
@@ -96,8 +104,11 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     // ここでは `for` ループを使って受け取った値をプリントします（チャネルが閉じられるまで）
     for (y in channel) println(y)
     println("Done!")
+//sampleEnd
 }
 ```
+
+</div>
 
 > [ここ](../core/kotlinx-coroutines-core/test/guide/example-channel-02.kt)で完全なコードを取得できます
 
@@ -116,21 +127,30 @@ Done!
 これは _プロデューサー - コンシューマー_ パターンの一部であり、コンカレントコードでよく見られます。
 そのようなプロデューサーを、パラメーターとしてchannelをとる関数に抽象化することはできますが、結果は関数から返さなければならないという常識とは逆になります。
 
-プロデューサー側で簡単に行うことを容易にする[produce]という便利なコルーチンビルダーと、コンシューマー側の `for` ループを置き換える拡張関数[consumeEach]があります。
+プロデューサー側で簡単に実行できる[produce]という便利なコルーチンビルダーと、コンシューマー側の `for` ループを置き換える拡張関数[consumeEach]があります。
+
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
 
 ```kotlin
-fun CoroutineScope.produceSquares() = produce<Int> {
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+
+fun CoroutineScope.produceSquares(): ReceiveChannel<Int> = produce {
     for (x in 1..5) send(x * x)
 }
 
-fun main(args: Array<String>) = runBlocking<Unit> {
+fun main() = runBlocking {
+//sampleStart
     val squares = produceSquares()
     squares.consumeEach { println(it) }
     println("Done!")
+//sampleEnd
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-channel-03.kt)で完全なコードを取得できます
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-channel-03.kt)で完全なコードを取得できます
 
 <!--- TEST 
 1
@@ -145,6 +165,8 @@ Done!
 
 パイプラインは、1つのコルーチンが無限の値のストリームを生成しているパターンです。
 
+<div class="sample" markdown="1" theme="idea" data-highlight-only>
+
 ```kotlin
 fun CoroutineScope.produceNumbers() = produce<Int> {
     var x = 1
@@ -152,28 +174,54 @@ fun CoroutineScope.produceNumbers() = produce<Int> {
 }
 ```
 
-そして、別のコルーチンはそのストリームを消費し、いくつかの処理を行い、他の結果を生成しています。
-以下の例では、数値は単に二乗されます。
+</div>
+
+また、別のコルーチンがそのストリームを消費し、処理を行い、他の結果を生成しています。
+以下の例では、数値は二乗されています。
+
+<div class="sample" markdown="1" theme="idea" data-highlight-only>
 
 ```kotlin
-fun CoroutineScope.square(numbers: ReceiveChannel<Int>) = produce<Int> {
+fun CoroutineScope.square(numbers: ReceiveChannel<Int>): ReceiveChannel<Int> = produce {
     for (x in numbers) send(x * x)
 }
 ```
 
+</div>
+
 メインコードはパイプライン全体を開始し接続します。
 
+<!--- CLEAR -->
+
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+
+fun main() = runBlocking {
+//sampleStart
     val numbers = produceNumbers() // 1から始まる整数を生成する
     val squares = square(numbers) // 整数を平方にする
     for (i in 1..5) println(squares.receive()) // 最初の5つをプリントする
     println("Done!") // 完了
     coroutineContext.cancelChildren() // 子コルーチンをキャンセルする
+//sampleEnd
+}
+
+fun CoroutineScope.produceNumbers() = produce<Int> {
+    var x = 1
+    while (true) send(x++) // infinite stream of integers starting from 1
+}
+
+fun CoroutineScope.square(numbers: ReceiveChannel<Int>): ReceiveChannel<Int> = produce {
+    for (x in numbers) send(x * x)
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-channel-04.kt)で完全なコードを取得できます
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-channel-04.kt)で完全なコードを取得できます
 
 <!--- TEST 
 1
@@ -184,15 +232,13 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 Done!
 -->
 
-> コルーチンを作成するすべての関数は、[CoroutineScope]の拡張として定義されているため、アプリケーションでグローバルなコルーチンが残っていないことを確認するために[構造化同時実行性](#構造化同時実行性)に頼ることができます。
+> コルーチンを作成するすべての関数は、[CoroutineScope]の拡張として定義されているため、アプリケーションでグローバルなコルーチンが残っていないことを確認するために[構造化並行性](https://kotlinlang.org/docs/reference/coroutines/composing-suspending-functions.html#structured-concurrency-with-async)に頼ることができます。
 
 ### パイプラインによる素数
 
 コルーチンのパイプラインを使って素数を生成する例で、パイプラインを徹底的に使ってみましょう。 無限の数列から始めます。
- 
-<!--- INCLUDE  
-import kotlin.coroutines.experimental.*
--->
+
+<div class="sample" markdown="1" theme="idea" data-highlight-only>
  
 ```kotlin
 fun CoroutineScope.numbersFrom(start: Int) = produce<Int> {
@@ -201,7 +247,11 @@ fun CoroutineScope.numbersFrom(start: Int) = produce<Int> {
 }
 ```
 
+</div>
+
 次のパイプラインステージでは、入力数列をフィルタリングして、指定された素数で割り切れるすべての数値を削除します。
+
+<div class="sample" markdown="1" theme="idea" data-highlight-only>
 
 ```kotlin
 fun CoroutineScope.filter(numbers: ReceiveChannel<Int>, prime: Int) = produce<Int> {
@@ -209,7 +259,9 @@ fun CoroutineScope.filter(numbers: ReceiveChannel<Int>, prime: Int) = produce<In
 }
 ```
 
-2からの数列を開始し、現在のチャネルから素数を取り出し、見つかった各素数に対して新しいパイプラインステージを開始することでパイプラインを構築します。
+</div>
+
+次に、2から数値のストリームを開始し、現在のチャネルから素数を取得し、見つかった素数ごとに新しいパイプラインステージを起動して、パイプラインを構築します。
  
 ```
 numbersFrom(2) -> filter(2) -> filter(3) -> filter(5) -> filter(7) ... 
@@ -217,10 +269,18 @@ numbersFrom(2) -> filter(2) -> filter(3) -> filter(5) -> filter(7) ...
  
 次の例では最初の10個の素数をプリントし、パイプライン全体をメインスレッドのコンテキストで実行します。
 すべてのコルーチンはメインの[runBlocking]コルーチンの範囲で起動されるため、開始したすべてのコルーチンの明示的なリストを保持する必要はありません。
-最初の10個の素数をプリントした後、[cancelChildren][kotlin.coroutines.experimental.CoroutineContext.cancelChildren]拡張関数を使用してすべての子コルーチンを取り消します。
+最初の10個の素数をプリントした後、[cancelChildren][kotlin.coroutines.CoroutineContext.cancelChildren]拡張関数を使用してすべての子コルーチンを取り消します。
+
+<!--- CLEAR -->
+
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
 
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+
+fun main() = runBlocking {
+//sampleStart
     var cur = numbersFrom(2)
     for (i in 1..10) {
         val prime = cur.receive()
@@ -228,10 +288,22 @@ fun main(args: Array<String>) = runBlocking<Unit> {
         cur = filter(cur, prime)
     }
     coroutineContext.cancelChildren() // すべての子をキャンセルしてメインを終わる
+//sampleEnd    
+}
+
+fun CoroutineScope.numbersFrom(start: Int) = produce<Int> {
+    var x = start
+    while (true) send(x++) // infinite stream of integers from start
+}
+
+fun CoroutineScope.filter(numbers: ReceiveChannel<Int>, prime: Int) = produce<Int> {
+    for (x in numbers) if (x % prime != 0) send(x)
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-channel-05.kt)で完全なコードを取得できます
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-channel-05.kt)で完全なコードを取得できます
 
 このコードの出力です。
 
@@ -250,17 +322,19 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 
 <!--- TEST -->
 
-標準ライブラリの [`buildIterator`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines.experimental/build-iterator.html) コルーチンビルダーを使って同じパイプラインを構築できることに留意してください。
+標準ライブラリの [`buildIterator`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.sequences/iterator.html) コルーチンビルダーを使って同じパイプラインを構築できることに留意してください。
 `produce` を `buildIterator`、 `send` を `yield`、 `receive` を `next`、 `ReceiveChannel` を `Iterator` で置き換え、コルーチンスコープを取り除きます。 `runBlocking` も必要ありません。
 ただし、上記のようなチャネルを使用するパイプラインの利点は、[Dispatchers.Default]コンテキストで実行すると実際に複数のCPUコアを使用できることです。
 
 どのみち、これは素数を見つけるには非常に非実用的な方法です。 
-実際にはパイプラインは（リモートサービスへの非同期呼び出しのような）いくつかの他のサスペンド呼び出しを必要とします。これらのパイプラインは `buildSequence`/`buildIterator` を使用して構築することはできません 。なぜなら完全に非同期の `produce` とは異なり任意の中断を許さないためです。
+実際にはパイプラインは（リモートサービスへの非同期呼び出しのような）いくつかの他のサスペンド呼び出しを必要とします。これらのパイプラインは `sequence`/`iterator` を使用して構築することはできません 。なぜなら完全に非同期の `produce` とは異なり任意の中断を許さないためです。
  
 ### ファンアウト
 
 複数のコルーチンが同じチャネルから受信し、それらの間で作業を分散することがあります。
 定期的に整数（毎秒10個の数値）を生成するプロデューサーコルーチンから始めましょう。
+
+<div class="sample" markdown="1" theme="idea" data-highlight-only>
 
 ```kotlin
 fun CoroutineScope.produceNumbers() = produce<Int> {
@@ -272,7 +346,11 @@ fun CoroutineScope.produceNumbers() = produce<Int> {
 }
 ```
 
+</div>
+
 いくつかのプロセッサコルーチンを持つことができます。この例では、IDと受け取った数値をプリントします。
+
+<div class="sample" markdown="1" theme="idea" data-highlight-only>
 
 ```kotlin
 fun CoroutineScope.launchProcessor(id: Int, channel: ReceiveChannel<Int>) = launch {
@@ -282,18 +360,45 @@ fun CoroutineScope.launchProcessor(id: Int, channel: ReceiveChannel<Int>) = laun
 }
 ```
 
+</div>
+
 今度は5つのプロセッサを起動して、それらを約1秒間動作させましょう。何が起こるか確かめてください。
 
+<!--- CLEAR -->
+
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+
+fun main() = runBlocking<Unit> {
+//sampleStart
     val producer = produceNumbers()
     repeat(5) { launchProcessor(it, producer) }
     delay(950)
     producer.cancel() // プロデューサーのコルーチンを取り消し、すべてを殺す
+//sampleEnd
+}
+
+fun CoroutineScope.produceNumbers() = produce<Int> {
+    var x = 1 // start from 1
+    while (true) {
+        send(x++) // produce next
+        delay(100) // wait 0.1s
+    }
+}
+
+fun CoroutineScope.launchProcessor(id: Int, channel: ReceiveChannel<Int>) = launch {
+    for (msg in channel) {
+        println("Processor #$id received $msg")
+    }    
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-channel-06.kt)で完全なコードを取得できます
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-channel-06.kt)で完全なコードを取得できます
 
 プロセッサIDとして受け取るそれぞれの固有の整数は異なる可能性がありますが、出力は次のようになります。
 
@@ -312,7 +417,7 @@ Processor #3 received 10
 
 <!--- TEST lines.size == 10 && lines.withIndex().all { (i, line) -> line.startsWith("Processor #") && line.endsWith(" received ${i + 1}") } -->
 
-プロデューサーのコルーチンをキャンセルするとそのチャネルが閉じられ、最終的にプロセッサのコルーチンが行っているチャネルでの繰り返しが終了することに注意してください。
+プロデューサーコルーチンをキャンセルするとそのチャネルが閉じられるため、最終的にはプロセッサコルーチンが実行しているチャネルでの反復が終了することに注意してください。
 
 また、 `launchProcessor` コードでファンアウトを実行するために `for` ループを使って明示的にチャネルを反復する方法にも注意してください。
 `consumeEach` とは異なり、この `for` ループパターンは、複数のコルーチンから完全に安全に使用できます。
@@ -323,9 +428,7 @@ Processor #3 received 10
 複数のコルーチンが同じチャネルに送信することがあります。
 例えば、文字列のチャネルと、指定された文字列を指定された遅延でこのチャネルに繰り返し送信するサスペンド関数を持っています。
 
-<!--- INCLUDE  
-import kotlin.coroutines.experimental.*
--->
+<div class="sample" markdown="1" theme="idea" data-highlight-only>
 
 ```kotlin
 suspend fun sendString(channel: SendChannel<String>, s: String, time: Long) {
@@ -336,10 +439,21 @@ suspend fun sendString(channel: SendChannel<String>, s: String, time: Long) {
 }
 ```
 
-さて、文字列を送信するコルーチンをいくつか起動するとどうなるか見てみましょう（この例ではメインスレッドのコンテキストでメインコルーチンの子として起動します）。
+</div>
+
+次に、文字列を送信するコルーチンをいくつか起動した場合に何が起こるかを見てみましょう（この例では、メインコルーチンの子としてメインスレッドのコンテキストで起動します）。
+</div>
+
+<!--- CLEAR -->
+
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
 
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+
+fun main() = runBlocking {
+//sampleStart
     val channel = Channel<String>()
     launch { sendString(channel, "foo", 200L) }
     launch { sendString(channel, "BAR!", 500L) }
@@ -347,10 +461,18 @@ fun main(args: Array<String>) = runBlocking<Unit> {
         println(channel.receive())
     }
     coroutineContext.cancelChildren() // すべての子をキャンセルしてメインを終わる
+//sampleEnd
+}
+
+suspend fun sendString(channel: SendChannel<String>, s: String, time: Long) {
+    while (true) {
+        delay(time)
+        channel.send(s)
+    }
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-channel-07.kt)で完全なコードを取得できます
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-channel-07.kt)で完全なコードを取得できます
 
 出力は、
 
@@ -373,12 +495,15 @@ BAR!
 
 次のコードの動作を見てみましょう。
 
-<!--- INCLUDE  
-import kotlin.coroutines.experimental.*
--->
+
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
 
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+
+fun main() = runBlocking<Unit> {
+//sampleStart
     val channel = Channel<Int>(4) // バッファーされたチャネルを作る
     val sender = launch { // 送信側コルーチンを起動
         repeat(10) {
@@ -389,10 +514,13 @@ fun main(args: Array<String>) = runBlocking<Unit> {
     // 何も受け取らずに待つ...
     delay(1000)
     sender.cancel() // 送信者コルーチンをキャンセルする
+//sampleEnd    
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-channel-08.kt)で完全なコードを取得できます
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-channel-08.kt)で完全なコードを取得できます
 
 これは容量 _4_ のバッファーされたチャネルを使って _5_ 回 "sending" を表示します。
 
@@ -415,14 +543,17 @@ Sending 4
 それらはファーストイン・ファーストアウトの順序で提供されます。例えば `receive` を呼び出す最初のコルーチンは要素を取得します。
 次の例では、2つのコルーチン「ping」と「pong」が共有「table」チャネルから「ball」オブジェクトを受け取ります。
 
-<!--- INCLUDE
-import kotlin.coroutines.experimental.*
--->
+
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
 
 ```kotlin
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+
+//sampleStart
 data class Ball(var hits: Int)
 
-fun main(args: Array<String>) = runBlocking<Unit> {
+fun main() = runBlocking {
     val table = Channel<Ball>() // 共有テーブル
     launch { player("ping", table) }
     launch { player("pong", table) }
@@ -439,9 +570,12 @@ suspend fun player(name: String, table: Channel<Ball>) {
         table.send(ball) // ボールを戻す
     }
 }
+//sampleEnd
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-channel-09.kt)で完全なコードを取得できます
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-channel-09.kt)で完全なコードを取得できます
 
 「ping」コルーチンが最初に開始されるので、ボールを受け取るのは最初のコルーチンです。 「ping」コルーチンは、ボールをテーブルに戻した後すぐに再びボールを受け取るようになっていますが、ボールは既に受信を待っていた「pong」コルーチンによって受信さます。
 
@@ -468,8 +602,13 @@ pong Ball(hits=4)
 
 実際にどのように動作するかを見てみましょう。
 
+<div class="sample" markdown="1" theme="idea" data-highlight-only>
+
 ```kotlin
-fun main(args: Array<String>) = runBlocking<Unit> {
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+
+fun main() = runBlocking<Unit> {
     val tickerChannel = ticker(delay = 100, initialDelay = 0) // ティッカーチャネルを作る
     var nextElement = withTimeoutOrNull(1) { tickerChannel.receive() }
     println("Initial element is available immediately: $nextElement") // 初期の遅延時間はまだ経過していない
@@ -494,7 +633,9 @@ fun main(args: Array<String>) = runBlocking<Unit> {
 }
 ```
 
-> [ここ](../core/kotlinx-coroutines-core/test/guide/example-channel-10.kt)で完全なコードを取得できます
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-channel-10.kt)で完全なコードを取得できます
 
 これは次の以下のようにプリントします。
 
@@ -514,16 +655,22 @@ Next element is ready in 50ms after consumer pause in 150ms: kotlin.Unit
 オプションとして、 `mode` パラメーターに[TickerMode.FIXED_DELAY]を指定して、要素間の遅延時間を固定することができます。
 
 <!--- MODULE kotlinx-coroutines-core -->
-
-<!--- INDEX kotlinx.coroutines.experimental.channels -->
-[Channel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-channel/index.html
-[SendChannel.send]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-send-channel/send.html
-[ReceiveChannel.receive]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-receive-channel/receive.html
-[SendChannel.close]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-send-channel/close.html
-[produce]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/produce.html
-[consumeEach]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/consume-each.html
-[Channel()]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-channel.html
-[ticker]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/ticker.html
-[ReceiveChannel.cancel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-receive-channel/cancel.html
-[TickerMode.FIXED_DELAY]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental.channels/-ticker-mode/-f-i-x-e-d_-d-e-l-a-y.html
+<!--- INDEX kotlinx.coroutines -->
+[CoroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope/index.html
+[runBlocking]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/run-blocking.html
+[kotlin.coroutines.CoroutineContext.cancelChildren]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/kotlin.coroutines.-coroutine-context/cancel-children.html
+[Dispatchers.Default]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-default.html
+<!--- INDEX kotlinx.coroutines.channels -->
+[Channel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/-channel/index.html
+[SendChannel.send]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/-send-channel/send.html
+[ReceiveChannel.receive]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/-receive-channel/receive.html
+[SendChannel.close]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/-send-channel/close.html
+[produce]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/produce.html
+[consumeEach]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/consume-each.html
+[Channel()]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/-channel.html
+[ticker]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/ticker.html
+[ReceiveChannel.cancel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/-receive-channel/cancel.html
+[TickerMode.FIXED_DELAY]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/-ticker-mode/-f-i-x-e-d_-d-e-l-a-y.html
+<!--- INDEX kotlinx.coroutines.selects -->
+[select]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.selects/select.html
 <!--- END -->

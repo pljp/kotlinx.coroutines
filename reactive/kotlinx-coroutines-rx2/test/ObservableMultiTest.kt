@@ -2,13 +2,14 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.rx2
+package kotlinx.coroutines.rx2
 
 import io.reactivex.*
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
 import org.junit.*
 import org.junit.Assert.*
 import java.io.*
+import kotlin.experimental.*
 
 /**
  * Test emitting multiple values with [rxObservable].
@@ -25,15 +26,18 @@ class ObservableMultiTest : TestBase() {
         }
     }
 
+
     @Test
     fun testConcurrentStress() {
         val n = 10_000 * stressTestMultiplier
         val observable = GlobalScope.rxObservable {
+            newCoroutineContext(coroutineContext)
             // concurrent emitters (many coroutines)
             val jobs = List(n) {
                 // launch
                 launch {
-                    send(it)
+                    val i = it
+                    send(i)
                 }
             }
             jobs.forEach { it.join() }
@@ -48,7 +52,7 @@ class ObservableMultiTest : TestBase() {
     fun testIteratorResendUnconfined() {
         val n = 10_000 * stressTestMultiplier
         val observable = GlobalScope.rxObservable(Dispatchers.Unconfined) {
-            Observable.range(0, n).consumeEach { send(it) }
+            Observable.range(0, n).collect { send(it) }
         }
         checkSingleValue(observable.toList()) { list ->
             assertEquals((0 until n).toList(), list)
@@ -59,7 +63,7 @@ class ObservableMultiTest : TestBase() {
     fun testIteratorResendPool() {
         val n = 10_000 * stressTestMultiplier
         val observable = GlobalScope.rxObservable {
-            Observable.range(0, n).consumeEach { send(it) }
+            Observable.range(0, n).collect { send(it) }
         }
         checkSingleValue(observable.toList()) { list ->
             assertEquals((0 until n).toList(), list)
@@ -72,7 +76,7 @@ class ObservableMultiTest : TestBase() {
             send("O")
             throw IOException("K")
         }
-        val single = GlobalScope.rxSingle {
+        val single = rxSingle {
             var result = ""
             try {
                 observable.consumeEach { result += it }
