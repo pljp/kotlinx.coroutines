@@ -40,7 +40,7 @@ class ExceptionsGuideTest {
 ### 例外の伝播
 
 コルーチンのビルダーには、自動的に例外を伝播する（[launch]と[actor]）か、それらをユーザーに公開する（[async]と[produce]）という2つの特色があります。
-前者はJavaの `Thread.uncaughtExceptionHandler` と同様に未処理の例外を扱いますが、後者は例えば[await][Deferred.await]や[receive][ReceiveChannel.receive]などで最終的な例外を消費することに依存しています。（[produce]と[receive][ReceiveChannel.receive]については後ほど[チャネル](channels.md）セクションで説明します）。
+前者はJavaの `Thread.uncaughtExceptionHandler` と同様に未処理の例外を扱いますが、後者は例えば[await][Deferred.await]や[receive][ReceiveChannel.receive]などで最終的な例外を消費することに依存しています。（[produce]と[receive][ReceiveChannel.receive]については後ほど[チャネル](channels.md)セクションで説明します）。
 
 [GlobalScope]でコルーチンを作成する簡単な例で説明できます。
 
