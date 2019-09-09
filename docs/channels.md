@@ -232,7 +232,7 @@ fun CoroutineScope.square(numbers: ReceiveChannel<Int>): ReceiveChannel<Int> = p
 Done!
 -->
 
-> コルーチンを作成するすべての関数は、[CoroutineScope]の拡張として定義されているため、アプリケーションでグローバルなコルーチンが残っていないことを確認するために[構造化並行性](https://kotlinlang.org/docs/reference/coroutines/composing-suspending-functions.html#structured-concurrency-with-async)に頼ることができます。
+> コルーチンを作成するすべての関数は、[CoroutineScope]の拡張として定義されているため、アプリケーションでグローバルなコルーチンが残っていないことを確認するために[構造化並行性](composing-suspending-functions.md#asyncでの構造化並行性)に頼ることができます。
 
 ### パイプラインによる素数
 

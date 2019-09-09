@@ -40,7 +40,7 @@ class ExceptionsGuideTest {
 ### 例外の伝播
 
 コルーチンのビルダーには、自動的に例外を伝播する（[launch]と[actor]）か、それらをユーザーに公開する（[async]と[produce]）という2つの特色があります。
-前者はJavaの `Thread.uncaughtExceptionHandler` と同様に未処理の例外を扱いますが、後者は例えば[await][Deferred.await]や[receive][ReceiveChannel.receive]などで最終的な例外を消費することに依存しています。（[produce]と[receive][ReceiveChannel.receive]については後ほど[チャネル](https://github.com/pljp/kotlinx.coroutines/blob/japanese_translation/docs/channels.md）セクションで説明します）。
+前者はJavaの `Thread.uncaughtExceptionHandler` と同様に未処理の例外を扱いますが、後者は例えば[await][Deferred.await]や[receive][ReceiveChannel.receive]などで最終的な例外を消費することに依存しています。（[produce]と[receive][ReceiveChannel.receive]については後ほど[チャネル](channels.md）セクションで説明します）。
 
 [GlobalScope]でコルーチンを作成する簡単な例で説明できます。
 
@@ -73,7 +73,7 @@ fun main() = runBlocking {
 
 > [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-exceptions-01.kt)で完全なコードを取得できます。
 
-このコードの出力は以下の通り（[debug](https://github.com/pljp/kotlinx.coroutines/blob/japanese_translation/docs/coroutine-context-and-dispatchers.md#コルーチンとスレッドのデバッグ)を用いる）。
+このコードの出力は以下の通り（[debug](coroutine-context-and-dispatchers.md#コルーチンとスレッドのデバッグ)を用いる）。
 
 ```text
 Throwing exception from launch
@@ -179,7 +179,7 @@ Parent is not cancelled
 <!--- TEST-->
 
 コルーチンが `CancellationException` 以外の例外を検出した場合、その例外を持つ親を取り消します。
-この動作はオーバーライドできず、[CoroutineExceptionHandler]実装に依存しない[構造化並行性](https://github.com/pljp/kotlinx.coroutines/blob/japanese_translation/docs/composing-suspending-functions.md#asyncでの構造化並行性)の安定したコルーチン階層を提供するために使用されます。
+この動作はオーバーライドできず、[CoroutineExceptionHandler]実装に依存しない[構造化並行性](composing-suspending-functions.md#asyncでの構造化並行性)の安定したコルーチン階層を提供するために使用されます。
 元の例外は、すべての子が終了したときに親によって処理されます。
 
 > これは、これらの例で[CoroutineExceptionHandler]が[GlobalScope]で作成されたコルーチンに常にインストールされている理由もあります。
