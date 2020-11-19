@@ -1,10 +1,11 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 package kotlinx.coroutines
 
 import kotlin.coroutines.*
+import kotlin.native.concurrent.*
 
 private fun takeEventLoop(): EventLoopImpl =
     ThreadLocalEventLoop.currentOrNull() as? EventLoopImpl ?:
@@ -15,8 +16,8 @@ internal actual object DefaultExecutor : CoroutineDispatcher(), Delay {
         takeEventLoop().dispatch(context, block)
     override fun scheduleResumeAfterDelay(timeMillis: Long, continuation: CancellableContinuation<Unit>) =
         takeEventLoop().scheduleResumeAfterDelay(timeMillis, continuation)
-    override fun invokeOnTimeout(timeMillis: Long, block: Runnable): DisposableHandle =
-        takeEventLoop().invokeOnTimeout(timeMillis, block)
+    override fun invokeOnTimeout(timeMillis: Long, block: Runnable, context: CoroutineContext): DisposableHandle =
+        takeEventLoop().invokeOnTimeout(timeMillis, block, context)
 
     actual fun enqueue(task: Runnable): Unit = loopWasShutDown()
 }
@@ -26,6 +27,7 @@ internal fun loopWasShutDown(): Nothing = error("Cannot execute task because eve
 internal actual fun createDefaultDispatcher(): CoroutineDispatcher =
     DefaultExecutor
 
+@SharedImmutable
 internal actual val DefaultDelay: Delay = DefaultExecutor
 
 public actual fun CoroutineScope.newCoroutineContext(context: CoroutineContext): CoroutineContext {

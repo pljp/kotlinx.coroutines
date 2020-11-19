@@ -1,58 +1,3 @@
-<!--- INCLUDE .*/example-ui-([a-z]+)-([0-9]+)\.kt 
-/*
- * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
- */
-
-// This file was automatically generated from coroutines-guide-ui.md by Knit tool. Do not edit.
-package kotlinx.coroutines.javafx.guide.$$1$$2
-
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.*
-import kotlinx.coroutines.javafx.JavaFx as Main
-import javafx.application.Application
-import javafx.event.EventHandler
-import javafx.geometry.*
-import javafx.scene.*
-import javafx.scene.input.MouseEvent
-import javafx.scene.layout.StackPane
-import javafx.scene.paint.Color
-import javafx.scene.shape.Circle
-import javafx.scene.text.Text
-import javafx.stage.Stage
-
-fun main(args: Array<String>) {
-    Application.launch(ExampleApp::class.java, *args)
-}
-
-class ExampleApp : Application() {
-    val hello = Text("Hello World!").apply {
-        fill = Color.valueOf("#C0C0C0")
-    }
-
-    val fab = Circle(20.0, Color.valueOf("#FF4081"))
-
-    val root = StackPane().apply {
-        children += hello
-        children += fab
-        StackPane.setAlignment(hello, Pos.CENTER)
-        StackPane.setAlignment(fab, Pos.BOTTOM_RIGHT)
-        StackPane.setMargin(fab, Insets(15.0))
-    }
-
-    val scene = Scene(root, 240.0, 380.0).apply {
-        fill = Color.valueOf("#303030")
-    }
-
-    override fun start(stage: Stage) {
-        stage.title = "Example"
-        stage.scene = scene
-        stage.show()
-        setup(hello, fab)
-    }
-}
--->
-<!--- KNIT     kotlinx-coroutines-javafx/test/guide/.*\.kt -->
-
 # コルーチンによるUIプログラミングガイド
 
 このガイドは、[kotlinx.coroutinesのガイド](../docs/coroutines-guide.md)でカバーされている基本的なコルーチンの概念に精通していることを前提としており、UIアプリケーションでコルーチンを使用する方法の具体例を示しています。
@@ -60,7 +5,7 @@ class ExampleApp : Application() {
 すべてのUIアプリケーションライブラリに共通して1つのことがあります。 UIのすべての状態が拘束される単一のメインスレッドがあり、この特定のスレッドでUIに対するすべての更新が行われなければなりません。 コルーチンに関しては、コルーチンの実行をこのメインUIスレッドに制限する適切な _コルーチンディスパッチャーコンテキスト_ が必要であることを意味します。
 
 具体的には、 `kotlinx.coroutines` は異なるUIアプリケーションライブラリにコルーチンのコンテキストを提供する3つのモジュールを持っています。
- 
+
 * [kotlinx-coroutines-android](kotlinx-coroutines-android) -- Androidアプリケーションのための `Dispatchers.Main` コンテキスト。
 * [kotlinx-coroutines-javafx](kotlinx-coroutines-javafx) -- JavaFX UIアプリケーションのための `Dispatchers.JavaFx` コンテキスト。
 * [kotlinx-coroutines-swing](kotlinx-coroutines-swing) -- Swing UI アプリケーションのための `Dispatchers.Swing` コンテキスト。
@@ -91,7 +36,7 @@ class ExampleApp : Application() {
 * [高度なトピック](#高度なトピック)
   * [ディスパッチせずにUIイベントハンドラーでコルーチンを開始する](#ディスパッチせずにuiイベントハンドラーでコルーチンを開始する)
 
-<!--- END_TOC -->
+<!--- END -->
 
 ## セットアップ
 
@@ -144,7 +89,7 @@ fun setup(hello: TextView, fab: FloatingActionButton) {
 `kotlinx-coroutines-android` モジュールへの依存関係を `app/build.gradle` ファイルの `dependencies { ... }` セクションに追加してください。
 
 ```groovy
-implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.0"
+implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.0"
 ```
 
 GitHubの[kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines)プロジェクトをワークステーションにクローンすることができます。 Android用のテンプレートプロジェクトは、[`ui/kotlinx-coroutines-android/example-app`](kotlinx-coroutines-android/example-app)ディレクトリにあります。
@@ -158,11 +103,11 @@ Android Studioで読み込んでAndroidのこのガイドを追試すること�
 
 `kotlinx-coroutines-javafx` モジュールには、JavaFxアプリケーションスレッドにコルーチンの実行をディスパッチする[Dispatchers.JavaFx][kotlinx.coroutines.Dispatchers.JavaFx]ディスパッチャーが含まれています。
 提示されたすべての例をAndroidに簡単に移植できるように、これを `Main` としてインポートします。
- 
+
 ```kotlin
 import kotlinx.coroutines.javafx.JavaFx as Main
 ```
- 
+
 <!--- CLEAR -->
 
 メインUIスレッドに限定されたコルーチンは、メインスレッドをブロックすることなく、UI内の何かを自由に更新して中断することができます。
@@ -249,12 +194,12 @@ fun setup(hello: Text, fab: Circle) {
 ```kotlin
 fun Node.onClick(action: suspend (MouseEvent) -> Unit) {
     onMouseClicked = EventHandler { event ->
-        GlobalScope.launch(Dispatchers.Main) { 
+        GlobalScope.launch(Dispatchers.Main) {
             action(event)
         }
     }
 }
-```  
+```
 
 > [ここ](kotlinx-coroutines-javafx/test/guide/example-ui-actor-01.kt)で完全なコードを取得できます
 
@@ -265,7 +210,7 @@ fun Node.onClick(action: suspend (MouseEvent) -> Unit) {
 
 ```kotlin
 fun View.onClick(action: suspend () -> Unit) {
-    setOnClickListener { 
+    setOnClickListener {
         GlobalScope.launch(Dispatchers.Main) {
             action()
         }
@@ -277,11 +222,11 @@ fun View.onClick(action: suspend () -> Unit) {
 
 ### 最大で1つの同時ジョブ
 
-新しいジョブを開始する前にアクティブなジョブをキャンセルすることで、多くとも1つのコルーチンだけがカウントダウンを動かしていることを確実にできます。 
+新しいジョブを開始する前にアクティブなジョブをキャンセルすることで、多くとも1つのコルーチンだけがカウントダウンを動かしていることを確実にできます。
 しかし、それは一般的に最良のアイデアではありません。
 [cancel][Job.cancel]関数は、コルーチンを中止するための信号としてのみ機能します。 キャンセルは協調的であり、コルーチンは現時点でキャンセル不可能な何かをしているか、そうでなければキャンセル信号を無視しているかもしれません。 より良い解決策は、同時に実行すべきでないタスクに対して[actor]を使用することです。
 `onClick` 拡張の実装を変更しましょう。
-  
+
 ```kotlin
 fun Node.onClick(action: suspend (MouseEvent) -> Unit) {
     // このノード上のすべてのイベントを処理する1つのアクターを起動する
@@ -293,10 +238,10 @@ fun Node.onClick(action: suspend (MouseEvent) -> Unit) {
         eventActor.offer(event)
     }
 }
-```  
+```
 
 > [ここ](kotlinx-coroutines-javafx/test/guide/example-ui-actor-02.kt)で完全なコードを取得できます
-  
+
 アクターのコルーチンと通常のイベントハンドラーの統合の根底にある重要なアイデアは、[SendChannel]に待機しない[offer][SendChannel.offer]関数があることです。
 可能ならばアクターにただちに要素を送信し、そうでない場合は要素を破棄します。
 `offer` は実際にはここでは無視している `Boolean` の結果を返します。
@@ -317,7 +262,7 @@ fun View.onClick(action: suspend (View) -> Unit) {
         for (event in channel) action(event)
     }
     // このアクターをアクティブにするリスナーをインストールする
-    setOnClickListener { 
+    setOnClickListener {
         eventActor.offer(it)
     }
 }
@@ -327,12 +272,12 @@ fun View.onClick(action: suspend (View) -> Unit) {
 
 
 ### イベントの合流
- 
+
 以前のイベントを処理している間にイベントを無視するのではなく、最新のイベントを処理する方が適切な場合もあります。
 [actor]コルーチンビルダーは、このアクターがメールボックスに使用しているチャネルの実装を制御する、オプションの `capacity` パラメーターを受け取ります。
 利用可能なすべての選択肢の説明は、[`Channel()`][Channel]ファクトリ関数のドキュメントに記載されています。
 
-[Channel.CONFLATED]の容量値を渡すことで `ConflatedChannel` を使用するコードを変更しましょう。
+[Channel.CONFLATED]の容量値を渡して、統合チャネルを使用するようにコードを変更しましょう。
 この変更は、アクターを作成する行にのみ適用されます。
 
 ```kotlin
@@ -346,7 +291,7 @@ fun Node.onClick(action: suspend (MouseEvent) -> Unit) {
         eventActor.offer(event)
     }
 }
-```  
+```
 
 > [ここ](kotlinx-coroutines-javafx/test/guide/example-ui-actor-03.kt)でJavaFxの完全なコードを取得できます。
   Androidでは、前の例の `val eventActor = ...` 行を更新する必要があります。
@@ -371,7 +316,6 @@ fun Node.onClick(action: suspend (MouseEvent) -> Unit) {
 これは、メインUIスレッドをブロックしてUIがフリーズする原因になるため、メインUIスレッドやUI制約コルーチンから直接行うことはできません。
 
 <!--- INCLUDE .*/example-ui-blocking-([0-9]+).kt
-
 fun Node.onClick(action: suspend (MouseEvent) -> Unit) {
     val eventActor = GlobalScope.actor<MouseEvent>(Dispatchers.Main, capacity = Channel.CONFLATED) {
         for (event in channel) action(event) // アクションにイベントを渡す
@@ -384,12 +328,12 @@ fun Node.onClick(action: suspend (MouseEvent) -> Unit) {
 
 次の例は、この問題を示しています。 メインUIスレッドで最後のクリックを処理するために、前のセクションのUI制約のイベント合流アクターで `onClick` 拡張を使用します。
 この例では、[フィボナッチ数](https://ja.wikipedia.org/wiki/%E3%83%95%E3%82%A3%E3%83%9C%E3%83%8A%E3%83%83%E3%83%81%E6%95%B0)の素朴な計算を実行します。
- 
+
 ```kotlin
 fun fib(x: Int): Int =
     if (x <= 1) x else fib(x - 1) + fib(x - 2)
-``` 
- 
+```
+
 円がクリックされるたびに、より大きなフィボナッチ数を計算します。
 UIのフリーズをより明確にするために、常に実行中の高速カウントアニメーションもあり、メインUIディスパッチャーのテキストを常に更新しています。
 
@@ -412,7 +356,7 @@ fun setup(hello: Text, fab: Circle) {
     }
 }
 ```
- 
+
 > [ここ](kotlinx-coroutines-javafx/test/guide/example-ui-blocking-01.kt)で完全なJavaFxコードを取得できます。
 `fib` 関数と `setup` 関数の本体をあなたのAndroidプロジェクトにコピーすることができます。
 
@@ -425,41 +369,33 @@ fun setup(hello: Text, fab: Circle) {
 ウィンドウ、UIコントロール、アクティビティ、ビュー、フラグメント、その他の視覚的要素が作成され、破棄されます。
 IOまたはバックグラウンド計算を実行する長時間実行コルーチンは、対応するUI要素への参照を必要以上に保持することができ、すでに破棄されて表示されなくなったUIオブジェクトのツリー全体のガベージコレクションを防ぎます。
 
-この問題の自然な解決策は、ライフサイクルを持つ各UIオブジェクトに[Job]オブジェクトを関連付けて、このジョブのコンテキストですべてのコルーチンを作成することです。
-しかし、関連するジョブオブジェクトをすべてのコルーチンのビルダーに渡すのは忘れやすく、エラーが発生しやすくなります。
-この目的のために、[CoroutineScope]インターフェースはUI所有者によって実装され、[CoroutineScope]の拡張として定義されたすべてのコルーチンビルダーは、明示的に言及せずにUIジョブを継承します。
-簡単にするために、[MainScope()]ファクトリを使用できます。 `Dispatchers.Main`と親ジョブを自動的に提供します。
+この問題の自然な解決策は、ライフサイクルを持つ各UIオブジェクトに[CoroutineScope]オブジェクトを関連付け、このスコープのコンテキストですべてのコルーチンを作成することです。
+簡単にするために、[MainScope()]ファクトリを使用できます。すべての子コルーチンに `Dispatchers.Main` と親ジョブを自動的に提供します。
 
 例えば、Androidアプリケーションでは最初に `Activity` が _作成_ され、不要になったときやメモリを解放しなければならないときに _破棄_ されます。
-自然な解決策は、 `Activity` のインスタンスに `Job` のインスタンスを付随することです。
+自然な解決策は、 `Activity` のインスタンスに `CoroutineScope` のインスタンスを加えることです。
 
 <!--- CLEAR -->
 
 ```kotlin
-abstract class ScopedAppActivity: AppCompatActivity(), CoroutineScope by MainScope() {
+class MainActivity : AppCompatActivity() {
+    private val scope = MainScope()
+
     override fun onDestroy() {
         super.onDestroy()
-        cancel() // CoroutineScope.cancel
-    } 
-}
-```
+        scope.cancel()
+    }
 
-ここで、ジョブに関連するアクティビティは、ScopedAppActivityを拡張する必要があります。
-
-```kotlin
-class MainActivity : ScopedAppActivity() {
-
-    fun asyncShowData() = launch { // アクティビティのジョブを親とするUIコンテキストで呼び出される
+    fun asyncShowData() = scope.launch { // アクティビティのスコープを親としてUIコンテキストで呼び出されます
         // 実際の実装
     }
-    
+
     suspend fun showIOData() {
-        val deferred = async(Dispatchers.IO) {
-            // 実装
+        val data = withContext(Dispatchers.IO) {
+            // バックグラウンドスレッドでデータを計算する
         }
         withContext(Dispatchers.Main) {
-          val data = deferred.await()
-          // UIにデータを表示する
+            // UIにデータを表示する
         }
     }
 }
@@ -467,43 +403,14 @@ class MainActivity : ScopedAppActivity() {
 
 `MainActivity` の中から起動したコルーチンはすべてそのジョブを親として持ち、アクティビティが破棄されると直ちに取り消されます。
 
-アクティビティスコープをビューとプレゼンターに伝達するには、複数の手法を使用できます。
-- ネストされたスコープを提供する[coroutineScope]ビルダー
-- プレゼンターメソッドパラメーターで[CoroutineScope]を受け取る
-- [CoroutineScope]でメソッド拡張を作成する（トップレベルメソッドにのみ適用可能）
-
-```kotlin
-class ActivityWithPresenters: ScopedAppActivity() {
-    fun init() {
-        val presenter = Presenter()
-        val presenter2 = ScopedPresenter(this)
-    }
-}
-
-class Presenter {
-    suspend fun loadData() = coroutineScope {
-        // 外側のアクティビティのネストされたスコープ
-    }
-    
-    suspend fun loadData(uiScope: CoroutineScope) = uiScope.launch {
-      // uiScopeで呼び出される
-    }
-}
-
-class ScopedPresenter(scope: CoroutineScope): CoroutineScope by scope {
-    fun loadData() = launch { // ActivityWithPresentersのスコープの拡張
-    }
-}
-
-suspend fun CoroutineScope.launchInIO() = launch(Dispatchers.IO) {
-   // 呼び出し元のスコープで起動されますが、IOディスパッチャーを使用します
-}
-``` 
+> Androidは、ライフサイクルを持つすべてのエンティティでコルーチンスコープをファーストパーティでサポートしていることに注意してください。
+[対応するドキュメント](https://developer.android.com/topic/libraries/architecture/coroutines#lifecyclescope)を参照してください。
 
 ジョブ間の親子関係は階層を形成します。
-ビューの代わりにバックグラウンドジョブを実行するコルーチンは、そのコンテキストでさらなる子コルーチンを作り出すことができます。
+アクティビティに代わってバックグラウンドジョブを実行するコルーチンは、さらに子コルーチンを作成できます。
 親ジョブがキャンセルされると、コルーチンのツリー全体がキャンセルされます。
 その例は、コルーチンのガイドの[「コルーチンの子」](../docs/coroutine-context-and-dispatchers.md#コルーチンの子)セクションに示されています。
+
 <!--- CLEAR -->
 
 ### ブロッキング操作
@@ -555,7 +462,7 @@ suspend fun fib(x: Int): Int = withContext(Dispatchers.Default) {
     fibBlocking(x)
 }
 
-fun fibBlocking(x: Int): Int = 
+fun fibBlocking(x: Int): Int =
     if (x <= 1) x else fibBlocking(x - 1) + fibBlocking(x - 2)
 ```
 
@@ -566,7 +473,7 @@ fun fibBlocking(x: Int): Int =
 
 `fib` 関数はコード内の単一のアクターから呼び出されるので、与えられた時間に最大で同時に1つの計算をすることに注意してください。したがって、このコードはリソース使用率に自然な制限があります。
 最大で1つのCPUコアを飽和させることができます。
-  
+
 ## 高度なトピック
 
 このセクションでは、さまざまな高度なトピックについて説明します。
@@ -585,16 +492,16 @@ fun setup(hello: Text, fab: Circle) {
             println("Inside coroutine")
             delay(100)
             println("After delay")
-        } 
+        }
         println("After launch")
     }
 }
 ```
- 
+
 > [ここ](kotlinx-coroutines-javafx/test/guide/example-ui-advanced-01.kt)で完全なJavaFxコードを取得できます。
 
 このコードを開始しピンクの円をクリックすると、次のメッセージがコンソールに出力されます。
- 
+
 ```text
 Before launch
 After launch
@@ -629,7 +536,7 @@ fun setup(hello: Text, fab: Circle) {
     }
 }
 ```
- 
+
 > [ここ](kotlinx-coroutines-javafx/test/guide/example-ui-advanced-02.kt)で完全なJavaFxコードを取得できます。
 
 クリックすると次のメッセージをプリントします。コルーチンのコードの実行がすぐに開始されることを確認してください。
@@ -640,7 +547,7 @@ Inside coroutine
 After launch
 After delay
 ```
-  
+
 <!--- MODULE kotlinx-coroutines-core -->
 <!--- INDEX kotlinx.coroutines -->
 [launch]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/launch.html
@@ -649,7 +556,6 @@ After delay
 [Job.cancel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/cancel.html
 [CoroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope/index.html
 [MainScope()]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-main-scope.html
-[coroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/coroutine-scope.html
 [withContext]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/with-context.html
 [Dispatchers.Default]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-default.html
 [CoroutineStart]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-start/index.html

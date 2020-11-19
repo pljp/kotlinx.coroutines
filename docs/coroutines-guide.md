@@ -24,6 +24,5 @@
 ## Additional references
 
 * [コルーチンによるUIプログラミングガイド](../ui/coroutines-guide-ui.md)
-* [コルーチンによるリアクティブストリームのガイド](../reactive/coroutines-guide-reactive.md)
 * [コルーチン設計文書 (KEEP)](https://github.com/pljp/kotlin-coroutines/blob/japanese_translation/kotlin-coroutines-informal.md)
 * [完全なkotlinx.coroutines APIリファレンス](https://kotlin.github.io/kotlinx.coroutines)

@@ -1,20 +1,5 @@
-<!--- INCLUDE .*/example-([a-z]+)-([0-9a-z]+)\.kt 
-/*
- * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
- */
+<!--- TEST_NAME ExceptionsGuideTest -->
 
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.$$1$$2
--->
-<!--- KNIT     ../kotlinx-coroutines-core/jvm/test/guide/.*\.kt -->
-<!--- TEST_OUT ../kotlinx-coroutines-core/jvm/test/guide/test/ExceptionsGuideTest.kt
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.test
-
-import org.junit.Test
-
-class ExceptionsGuideTest {
---> 
 **目次**
 
 <!--- TOC -->
@@ -29,20 +14,20 @@ class ExceptionsGuideTest {
     * [監視スコープ](#監視スコープ)
     * [監視付きコルーチンの例外](#監視付きコルーチンの例外)
 
-<!--- END_TOC -->
+<!--- END -->
 
 ## 例外処理
 
 
 このセクションでは、例外処理と例外のキャンセルについて説明します。
-キャンセルされたコルーチンは中断ポイントで[CancellationException]をスローし、コルーチンの機構では無視されることは既に知っています。しかし、キャンセル中に例外がスローされたり、同じコルーチンの複数の子が例外をスローするとどうなりますか？
+キャンセルされたコルーチンは中断ポイントで[CancellationException]をスローし、コルーチンの機構では無視されることは既に知っています。ここでは、キャンセル中に例外がスローされた場合、または同じコルーチンの複数の子が例外をスローした場合に何が起こるかを見ていきます。
 
 ### 例外の伝播
 
 コルーチンのビルダーには、自動的に例外を伝播する（[launch]と[actor]）か、それらをユーザーに公開する（[async]と[produce]）という2つの特色があります。
-前者はJavaの `Thread.uncaughtExceptionHandler` と同様に未処理の例外を扱いますが、後者は例えば[await][Deferred.await]や[receive][ReceiveChannel.receive]などで最終的な例外を消費することに依存しています。（[produce]と[receive][ReceiveChannel.receive]については後ほど[チャネル](channels.md)セクションで説明します）。
+これらのビルダーを使用して別のコルーチンの _子_ ではない _ルート_ コルーチンを作成する場合、前者のビルダーは、Javaの `Thread.uncaughtExceptionHandler` と同様に、例外を**キャッチされていない**例外として扱いますが、後者は、例えば[await][Deferred.await]または[receive][ReceiveChannel.receive]を介して最終的な例外の消費はユーザーに依存しています（[produce]と[receive][ReceiveChannel.receive]については後ほど[チャネル][Channels](channels.md)セクションで説明します）。
 
-[GlobalScope]でコルーチンを作成する簡単な例で説明できます。
+これは、[GlobalScope]を使用してルートコルーチンを作成する簡単な例で示すことができます。
 
 <div class="sample" markdown="1" theme="idea" data-highlight-only>
 
@@ -50,13 +35,13 @@ class ExceptionsGuideTest {
 import kotlinx.coroutines.*
 
 fun main() = runBlocking {
-    val job = GlobalScope.launch {
+    val job = GlobalScope.launch { // launchによるルートコルーチン
         println("Throwing exception from launch")
         throw IndexOutOfBoundsException() // Thread.defaultUncaughtExceptionHandlerによってコンソールにプリントされる
     }
     job.join()
     println("Joined failed job")
-    val deferred = GlobalScope.async {
+    val deferred = GlobalScope.async { // asyncによるルートコルーチン
         println("Throwing exception from async")
         throw ArithmeticException() // 何もプリントされておらず、ユーザーのawaitコールに依存する
     }
@@ -87,15 +72,23 @@ Caught ArithmeticException
 
 ### CoroutineExceptionHandler
 
-しかし、コンソールにすべての例外を出力したくない場合はどうすればよいですか？
+**キャッチされていない**例外をコンソールに出力するデフォルトの動作をカスタマイズすることができます。
 [CoroutineExceptionHandler]コンテキスト要素は、カスタムロギングまたは例外処理が行われるコルーチンの一般的な `catch` ブロックとして使用されます。
-これは[`Thread.uncaughtExceptionHandler`](https://docs.oracle.com/javase/8/docs/api/java/lang/Thread.html#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler))を使うことに似ています。
+_ルート_ コルーチンの[CoroutineExceptionHandler]コンテキスト要素は、このルートコルーチンと、カスタム例外処理が行われる可能性のあるすべての子の汎用 `catch` ブロックとして使用できます。
+これは[`Thread.uncaughtExceptionHandler`](https://docs.oracle.com/javase/8/docs/api/java/lang/Thread.html#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler))に似ています。
+`CoroutineExceptionHandler` の例外から回復することはできません。
+コルーチンは、ハンドラーが呼び出されたときに、対応する例外の発生とともにすでに完了しています。
+通常、ハンドラーは、例外のログ記録、何らかのエラーメッセージの表示、アプリケーションの終了、および/または再起動に使用されます。
 
 JVMでは、[CoroutineExceptionHandler]を[`ServiceLoader`](https://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html)で登録することによって、すべてのコルーチンのグローバル例外ハンドラーを再定義することができます。
 グローバル例外ハンドラーは、特定のハンドラーが登録されていないときに使用される[`Thread.defaultUncaughtExceptionHandler`](https://docs.oracle.com/javase/8/docs/api/java/lang/Thread.html#setDefaultUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler))に似ています。
 Androidでは、 `uncaughtExceptionPreHandler`がグローバルコルーチン例外ハンドラーとしてインストールされています。
 
-[CoroutineExceptionHandler]は、ユーザが処理する予定のない例外に対してのみ呼び出されるため、[async]ビルダーなどに登録しても効果はありません。
+`CoroutineExceptionHandler` は、**キャッチされていない**例外（他の方法で処理されなかった例外）でのみ呼び出されます。
+特に、すべての _子_ コルーチン（別の[Job]のコンテキストで作成されたコルーチン）は、例外の処理を親コルーチンに移譲し、同様にルートまで移譲するため、コンテキストにインストールされた `CoroutineExceptionHandler` は使用されません。
+加えて、[async]ビルダーは常にすべての例外をキャッチし、結果の[Deferred]オブジェクトでそれらを表すため、その `CoroutineExceptionHandler` も効果がありません。
+
+> 監視スコープで実行されているコルーチンは、親に例外を伝播せず、このルールから除外されます。 このドキュメントの[監視](#監視)セクションで詳細を説明します。
 
 <div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
 
@@ -104,17 +97,17 @@ import kotlinx.coroutines.*
 
 fun main() = runBlocking {
 //sampleStart
-    val handler = CoroutineExceptionHandler { _, exception -> 
-        println("Caught $exception") 
+    val handler = CoroutineExceptionHandler { _, exception ->
+        println("CoroutineExceptionHandler got $exception")
     }
-    val job = GlobalScope.launch(handler) {
+    val job = GlobalScope.launch(handler) { // GlobalScopeで実行するルートコルーチン
         throw AssertionError()
     }
-    val deferred = GlobalScope.async(handler) {
+    val deferred = GlobalScope.async(handler) { // これもルート、ただし launch ではなく async
         throw ArithmeticException() // ユーザーがdeferred.await()を呼び出しても何もプリントされない
     }
     joinAll(job, deferred)
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -125,17 +118,16 @@ fun main() = runBlocking {
 このコードの出力は以下の通り。
 
 ```text
-Caught java.lang.AssertionError
+CoroutineExceptionHandler got java.lang.AssertionError
 ```
 
 <!--- TEST-->
 
 ### キャンセルと例外
 
-キャンセルは例外と緊密に結びついています。
+キャンセルは例外と密接に関連しています。
 コルーチンは内部的に `CancellationException` を使用してキャンセルしますが、これらの例外はすべてのハンドラーで無視されるため、 `catch` ブロックで取得できる追加のデバッグ情報のソースとしてのみ使用する必要があります。
-コルーチンが理由なしで[Job.cancel]を使用して取り消されると終了しますが、その親は取り消されません。
-理由なしで取り消すことは、親がキャンセルすることなく子をキャンセルする仕組みです。
+コルーチンは[Job.cancel]を使用してキャンセルすると終了しますが、その親はキャンセルされません。
 
 <div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
 
@@ -160,7 +152,7 @@ fun main() = runBlocking {
         println("Parent is not cancelled")
     }
     job.join()
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -178,12 +170,15 @@ Parent is not cancelled
 
 <!--- TEST-->
 
-コルーチンが `CancellationException` 以外の例外を検出した場合、その例外を持つ親を取り消します。
-この動作はオーバーライドできず、[CoroutineExceptionHandler]実装に依存しない[構造化並行性](composing-suspending-functions.md#asyncでの構造化並行性)の安定したコルーチン階層を提供するために使用されます。
-元の例外は、すべての子が終了したときに親によって処理されます。
+コルーチンが `CancellationException` 以外の例外を検出した場合、その例外を持つ親をキャンセルします。
+この動作はオーバーライドできず、[構造化並行性](composing-suspending-functions.md#asyncでの構造化並行性)の安定したコルーチン階層を提供するために使用されます。
+[CoroutineExceptionHandler]実装は、子コルーチンには使用されません。
 
-> これは、これらの例で[CoroutineExceptionHandler]が[GlobalScope]で作成されたコルーチンに常にインストールされている理由もあります。
-メインの[runBlocking]のスコープで起動されるコルーチンに例外ハンドラーをインストールするのは意味がありません。メインコルーチンは、インストールされたハンドラーによらず子が例外で完了したときに常にキャンセルされるためです。
+> これらの例では、[CoroutineExceptionHandler]は常に[GlobalScope]で作成されたコルーチンにインストールされます。
+メイン[runBlocking]のスコープで起動されたコルーチンに例外ハンドラーをインストールすることは意味がありません。これは、インストールされたハンドラーによらず、子が例外で完了したときにメインコルーチンが常にキャンセルされるためです。
+
+元の例外は、すべての子が終了した場合にのみ親によって処理されます。
+これは、次の例で示されています。
 
 <div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
 
@@ -192,8 +187,8 @@ import kotlinx.coroutines.*
 
 fun main() = runBlocking {
 //sampleStart
-    val handler = CoroutineExceptionHandler { _, exception -> 
-        println("Caught $exception") 
+    val handler = CoroutineExceptionHandler { _, exception ->
+        println("CoroutineExceptionHandler got $exception")
     }
     val job = GlobalScope.launch(handler) {
         launch { // 最初の子
@@ -214,7 +209,7 @@ fun main() = runBlocking {
         }
     }
     job.join()
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -228,22 +223,16 @@ fun main() = runBlocking {
 Second child throws an exception
 Children are cancelled, but exception is not handled until all children terminate
 The first child finished its non cancellable block
-Caught java.lang.ArithmeticException
+CoroutineExceptionHandler got java.lang.ArithmeticException
 ```
 <!--- TEST-->
 
 ### 例外の集約
 
-コルーチンの複数の子が例外をスローするとどうなりますか？
-一般的なルールは「最初の例外が勝つ」ので、最初にスローされた例外がハンドラーに渡されます。
-しかし、それは、例えばコルーチンが `finally` ブロックで例外をスローした場合などに例外が失われることがあります。
-したがって、追加の例外は抑制されます。
-
-> 解決策の1つは各例外を別々に報告することですが、[Deferred.await]には動作の不整合を回避するための同じメカニズムが必要であり、これによりコルーチンの実装の詳細（作業の一部を子に委任したかどうか）が例外ハンドラーにリークすることになります。
-
+コルーチンの複数の子が例外で失敗した場合、一般的なルールは「最初の例外が優先される」ため、最初の例外が処理されます。
+最初の例外の後に発生するすべての追加の例外は、抑制された例外として最初の例外にアタッチされます。
 
 <!--- INCLUDE
-
 import kotlinx.coroutines.exceptions.*
 -->
 
@@ -255,23 +244,23 @@ import java.io.*
 
 fun main() = runBlocking {
     val handler = CoroutineExceptionHandler { _, exception ->
-        println("Caught $exception with suppressed ${exception.suppressed.contentToString()}")
+        println("CoroutineExceptionHandler got $exception with suppressed ${exception.suppressed.contentToString()}")
     }
     val job = GlobalScope.launch(handler) {
         launch {
             try {
-                delay(Long.MAX_VALUE)
+                delay(Long.MAX_VALUE) // 別の兄弟がIOExceptionで失敗すると、キャンセルされる
             } finally {
-                throw ArithmeticException()
+                throw ArithmeticException() // 2番目の例外
             }
         }
         launch {
             delay(100)
-            throw IOException()
+            throw IOException() // 最初の例外
         }
         delay(Long.MAX_VALUE)
     }
-    job.join()  
+    job.join()
 }
 ```
 
@@ -284,15 +273,16 @@ fun main() = runBlocking {
 このコードの出力は以下の通り。
 
 ```text
-Caught java.io.IOException with suppressed [java.lang.ArithmeticException]
+CoroutineExceptionHandler got java.io.IOException with suppressed [java.lang.ArithmeticException]
 ```
 
 <!--- TEST-->
 
-> このメカニズムは現在、Javaバージョン1.7以降でのみ動作します。
-JSおよびネイティブの制限は一時的なもので、今後修正される予定です。
+> このメカニズムは現在、Javaバージョン1.7以降でのみ機能することに注意してください。
+The JS and Native restrictions are temporary and will be lifted in the future.
+JSおよびネイティブの制限は一時的なものであり、今後取り除かれる予定です。
 
-キャンセル例外は、デフォルトでは透過的かつアンラップされています。
+キャンセル例外は透過的であり、デフォルトでアンラップされます。
 
 <div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
 
@@ -303,13 +293,13 @@ import java.io.*
 fun main() = runBlocking {
 //sampleStart
     val handler = CoroutineExceptionHandler { _, exception ->
-        println("Caught original $exception")
+        println("CoroutineExceptionHandler got $exception")
     }
     val job = GlobalScope.launch(handler) {
-        val inner = launch {
+        val inner = launch { // このコルーチンのスタックはすべてキャンセルされる
             launch {
                 launch {
-                    throw IOException()
+                    throw IOException() // 元の例外
                 }
             }
         }
@@ -317,11 +307,11 @@ fun main() = runBlocking {
             inner.join()
         } catch (e: CancellationException) {
             println("Rethrowing CancellationException with original cause")
-            throw e
+            throw e // キャンセル例外は再スローされるが、元のIOExceptionはハンドラーに到達する
         }
     }
     job.join()
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -333,23 +323,22 @@ fun main() = runBlocking {
 
 ```text
 Rethrowing CancellationException with original cause
-Caught original java.io.IOException
+CoroutineExceptionHandler got java.io.IOException
 ```
 <!--- TEST-->
 
 ### 監視
 
-以前に検討したように、キャンセルはコルーチン階層全体を伝播する双方向の関係です。
-しかし、単方向のキャンセルが必要な場合はどうでしょうか？
+以前に検討したように、キャンセルはコルーチンの階層全体に伝播する双方向の関係です。 一方向のキャンセルが必要な場合を見てみましょう。
 
-そのような要件の良い例は、そのスコープで定義されたジョブを持つUIコンポーネントです。
-UIの子タスクのいずれかが失敗した場合、UIコンポーネント全体を常にキャンセル（事実上強制終了）する必要はありませんが、UIコンポーネントが破壊される（およびそのジョブがキャンセルされる）場合、結果は不要になったのですべての子ジョブを失敗させる必要があります。
+このような要件の良い例は、スコープで定義されたジョブを持つUIコンポーネントです。
+UIの子タスクのいずれかが失敗した場合、必ずしもUIコンポーネント全体をキャンセル（実質的に強制終了）する必要はありませんが、UIコンポーネントが破棄された（そしてそのジョブがキャンセルされた）場合、結果が不要になるためすべての子ジョブを失敗させる必要があります。
 
-別の例は、複数の子ジョブを生成し、実行を _監視_ し、失敗を追跡し、失敗した子ジョブのみを再起動するサーバープロセスです。
+もう1つの例は、複数の子ジョブを生成し、それらの実行を _監視_ して、失敗を追跡し、失敗したジョブのみを再起動する必要があるサーバープロセスです。
 
 #### 監視ジョブ
 
-これらの目的のために、[SupervisorJob][SupervisorJob()]を使用できます。通常の[Job][Job()]と似ていますが、キャンセルは下方向にのみ伝播されるという唯一の例外があります。 次の例で簡単に説明できます。
+[SupervisorJob][SupervisorJob()]は、これらの目的のために使用できます。通常の[Job][Job()]と似ていますが、キャンセルは下方向にのみ伝播されるという唯一の例外があります。これは、次の例を使用して簡単に示すことができます。
 
 <div class="sample" markdown="1" theme="idea" data-highlight-only>
 
@@ -359,26 +348,26 @@ import kotlinx.coroutines.*
 fun main() = runBlocking {
     val supervisor = SupervisorJob()
     with(CoroutineScope(coroutineContext + supervisor)) {
-        // launch the first child -- its exception is ignored for this example (don't do this in practice!)
+        // 最初の子を起動する -- この例では例外は無視される（実際にはこれを行わないこと！）
         val firstChild = launch(CoroutineExceptionHandler { _, _ ->  }) {
-            println("First child is failing")
-            throw AssertionError("First child is cancelled")
+            println("The first child is failing")
+            throw AssertionError("The first child is cancelled")
         }
-        // launch the second child
+        // 2番目の子を起動する
         val secondChild = launch {
             firstChild.join()
-            // Cancellation of the first child is not propagated to the second child
-            println("First child is cancelled: ${firstChild.isCancelled}, but second one is still active")
+            // 最初の子のキャンセルは2番目の子に伝播されない
+            println("The first child is cancelled: ${firstChild.isCancelled}, but the second one is still active")
             try {
                 delay(Long.MAX_VALUE)
             } finally {
-                // But cancellation of the supervisor is propagated
-                println("Second child is cancelled because supervisor is cancelled")
+                // ただし、スーパーバイザーのキャンセルは伝播される
+                println("The second child is cancelled because the supervisor was cancelled")
             }
         }
-        // wait until the first child fails & completes
+        // 最初の子が失敗して完了するまで待つ
         firstChild.join()
-        println("Cancelling supervisor")
+        println("Cancelling the supervisor")
         supervisor.cancel()
         secondChild.join()
     }
@@ -392,19 +381,19 @@ fun main() = runBlocking {
 このコードの出力は次のとおりです。
 
 ```text
-First child is failing
-First child is cancelled: true, but second one is still active
-Cancelling supervisor
-Second child is cancelled because supervisor is cancelled
+The first child is failing
+The first child is cancelled: true, but the second one is still active
+Cancelling the supervisor
+The second child is cancelled because the supervisor was cancelled
 ```
 <!--- TEST-->
 
 
 #### 監視スコープ
 
-*スコープ付き*並行性の場合、同じ目的で[coroutineScope]の代わりに[supervisorScope]を使用できます。
-キャンセルは一方向にのみ伝播し、失敗した場合にのみすべての子をキャンセルします。
-また、[coroutineScope]と同様に、完了前にすべての子を待機します。
+[coroutineScope][_coroutineScope]の代わりに、[supervisorScope][_supervisorScope]を _スコープ付き_ 並行処理に使用できます。
+キャンセルを一方向にのみ伝播し、失敗した場合にのみすべての子をキャンセルします。
+また、[coroutineScope][_coroutineScope]と同様に、すべての子が完了するまで待機します。
 
 <div class="sample" markdown="1" theme="idea" data-highlight-only>
 
@@ -417,19 +406,19 @@ fun main() = runBlocking {
         supervisorScope {
             val child = launch {
                 try {
-                    println("Child is sleeping")
+                    println("The child is sleeping")
                     delay(Long.MAX_VALUE)
                 } finally {
-                    println("Child is cancelled")
+                    println("The child is cancelled")
                 }
             }
-            // Give our child a chance to execute and print using yield 
+            // yieldを使用して子に実行およびプリントする機会を与える
             yield()
-            println("Throwing exception from scope")
+            println("Throwing an exception from the scope")
             throw AssertionError()
         }
     } catch(e: AssertionError) {
-        println("Caught assertion error")
+        println("Caught an assertion error")
     }
 }
 ```
@@ -441,10 +430,10 @@ fun main() = runBlocking {
 このコードの出力は次のとおりです。
 
 ```text
-Child is sleeping
-Throwing exception from scope
-Child is cancelled
-Caught assertion error
+The child is sleeping
+Throwing an exception from the scope
+The child is cancelled
+Caught an assertion error
 ```
 <!--- TEST-->
 
@@ -453,6 +442,7 @@ Caught assertion error
 通常のジョブと監督ジョブのもう1つの重要な違いは、例外処理です。
 すべての子は、例外処理メカニズムを介してそれ自体で例外を処理する必要があります。
 この違いは、子の失敗が親に伝播されないという事実に由来します。
+これは、[supervisorScope][_supervisorScope]内で直接起動されたコルーチンが、ルートコルーチンと同じ方法で、スコープにインストールされた[CoroutineExceptionHandler]を使用 _する_ ことを意味します（詳細については、[CoroutineExceptionHandler](#coroutineexceptionhandler)セクションを参照してください）。
 
 <div class="sample" markdown="1" theme="idea" data-highlight-only>
 
@@ -461,17 +451,17 @@ import kotlin.coroutines.*
 import kotlinx.coroutines.*
 
 fun main() = runBlocking {
-    val handler = CoroutineExceptionHandler { _, exception -> 
-        println("Caught $exception") 
+    val handler = CoroutineExceptionHandler { _, exception ->
+        println("CoroutineExceptionHandler got $exception")
     }
     supervisorScope {
         val child = launch(handler) {
-            println("Child throws an exception")
+            println("The child throws an exception")
             throw AssertionError()
         }
-        println("Scope is completing")
+        println("The scope is completing")
     }
-    println("Scope is completed")
+    println("The scope is completed")
 }
 ```
 
@@ -482,10 +472,10 @@ fun main() = runBlocking {
 このコードの出力は次のとおりです。
 
 ```text
-Scope is completing
-Child throws an exception
-Caught java.lang.AssertionError
-Scope is completed
+The scope is completing
+The child throws an exception
+CoroutineExceptionHandler got java.lang.AssertionError
+The scope is completed
 ```
 <!--- TEST-->
 
@@ -497,12 +487,14 @@ Scope is completed
 [Deferred.await]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-deferred/await.html
 [GlobalScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-global-scope/index.html
 [CoroutineExceptionHandler]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-exception-handler/index.html
+[Job]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/index.html
+[Deferred]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-deferred/index.html
 [Job.cancel]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/cancel.html
 [runBlocking]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/run-blocking.html
 [SupervisorJob()]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-supervisor-job.html
 [Job()]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job.html
-[supervisorScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/supervisor-scope.html
-[coroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/coroutine-scope.html
+[_coroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/coroutine-scope.html
+[_supervisorScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/supervisor-scope.html
 <!--- INDEX kotlinx.coroutines.channels -->
 [actor]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/actor.html
 [produce]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/produce.html

@@ -1,21 +1,4 @@
-<!--- INCLUDE .*/example-([a-z]+)-([0-9a-z]+)\.kt 
-/*
- * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
- */
-
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.$$1$$2
--->
-<!--- KNIT     ../kotlinx-coroutines-core/jvm/test/guide/.*\.kt -->
-<!--- TEST_OUT ../kotlinx-coroutines-core/jvm/test/guide/test/SelectGuideTest.kt
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.test
-
-import org.junit.Test
-
-class SelectGuideTest {
---> 
-
+<!--- TEST_NAME SelectGuideTest -->
 
 **目次**
 
@@ -28,8 +11,7 @@ class SelectGuideTest {
   * [延期された値の選択](#延期された値の選択)
   * [延期された値のチャネルの切り替え](#延期された値のチャネルの切り替え)
 
-<!--- END_TOC -->
-
+<!--- END -->
 
 ## セレクト式（実験的）
 
@@ -115,7 +97,7 @@ fun CoroutineScope.buzz() = produce<String> {
 }
 
 suspend fun selectFizzBuzz(fizz: ReceiveChannel<String>, buzz: ReceiveChannel<String>) {
-    select<Unit> { // <Unit> means that this select expression does not produce any result 
+    select<Unit> { // <Unit> means that this select expression does not produce any result
         fizz.onReceive { value ->  // this is the first select clause
             println("fizz -> '$value'")
         }
@@ -133,7 +115,7 @@ fun main() = runBlocking<Unit> {
         selectFizzBuzz(fizz, buzz)
     }
     coroutineContext.cancelChildren() // cancel fizz & buzz coroutines
-//sampleEnd        
+//sampleEnd
 }
 ```
 
@@ -166,16 +148,16 @@ buzz -> 'Buzz!'
 ```kotlin
 suspend fun selectAorB(a: ReceiveChannel<String>, b: ReceiveChannel<String>): String =
     select<String> {
-        a.onReceiveOrNull { value -> 
-            if (value == null) 
-                "Channel 'a' is closed" 
-            else 
+        a.onReceiveOrNull { value ->
+            if (value == null)
+                "Channel 'a' is closed"
+            else
                 "a -> '$value'"
         }
-        b.onReceiveOrNull { value -> 
-            if (value == null) 
+        b.onReceiveOrNull { value ->
+            if (value == null)
                 "Channel 'b' is closed"
-            else    
+            else
                 "b -> '$value'"
         }
     }
@@ -198,20 +180,20 @@ import kotlinx.coroutines.selects.*
 
 suspend fun selectAorB(a: ReceiveChannel<String>, b: ReceiveChannel<String>): String =
     select<String> {
-        a.onReceiveOrNull { value -> 
-            if (value == null) 
-                "Channel 'a' is closed" 
-            else 
+        a.onReceiveOrNull { value ->
+            if (value == null)
+                "Channel 'a' is closed"
+            else
                 "a -> '$value'"
         }
-        b.onReceiveOrNull { value -> 
-            if (value == null) 
+        b.onReceiveOrNull { value ->
+            if (value == null)
                 "Channel 'b' is closed"
-            else    
+            else
                 "b -> '$value'"
         }
     }
-    
+
 fun main() = runBlocking<Unit> {
 //sampleStart
     val a = produce<String> {
@@ -223,9 +205,9 @@ fun main() = runBlocking<Unit> {
     repeat(8) { // 最初の8個の結果をプリントする
         println(selectAorB(a, b))
     }
-    coroutineContext.cancelChildren()  
-//sampleEnd      
-}    
+    coroutineContext.cancelChildren()
+//sampleEnd
+}
 ```
 
 </div>
@@ -294,7 +276,7 @@ fun CoroutineScope.produceNumbers(side: SendChannel<Int>) = produce<Int> {
         delay(100) // every 100 ms
         select<Unit> {
             onSend(num) {} // Send to the primary channel
-            side.onSend(num) {} // or to the side channel     
+            side.onSend(num) {} // or to the side channel
         }
     }
 }
@@ -305,22 +287,22 @@ fun main() = runBlocking<Unit> {
     launch { // これはサイドチャネルの非常に高速なコンシューマー
         side.consumeEach { println("Side channel has $it") }
     }
-    produceNumbers(side).consumeEach { 
+    produceNumbers(side).consumeEach {
         println("Consuming $it")
         delay(250) // 急がずに、消費した値をきっちり消化する
     }
     println("Done consuming")
-    coroutineContext.cancelChildren()  
-//sampleEnd      
+    coroutineContext.cancelChildren()
+//sampleEnd
 }
 ```
 
-</div> 
- 
+</div>
+
 > [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-select-03.kt)で完全なコードを取得できます
-  
+
 では、何が起こるか見てみましょう。
- 
+
 ```text
 Consuming 1
 Side channel has 2
@@ -378,7 +360,7 @@ fun CoroutineScope.asyncStringsList(): List<Deferred<String>> {
 import kotlinx.coroutines.*
 import kotlinx.coroutines.selects.*
 import java.util.*
-    
+
 fun CoroutineScope.asyncString(time: Int) = async {
     delay(time.toLong())
     "Waited for $time ms"
@@ -434,7 +416,7 @@ fun CoroutineScope.switchMapDeferreds(input: ReceiveChannel<Deferred<String>>) =
             input.onReceiveOrNull { update ->
                 update // 待機する次の値を置き換える
             }
-            current.onAwait { value ->  
+            current.onAwait { value ->
                 send(value) // 現在の遅延が発生した値を送信する
                 input.receiveOrNull() // 入力チャネルから次の遅延を使用する
             }
@@ -475,7 +457,7 @@ fun CoroutineScope.asyncString(str: String, time: Long) = async {
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.selects.*
-    
+
 fun CoroutineScope.switchMapDeferreds(input: ReceiveChannel<Deferred<String>>) = produce<String> {
     var current = input.receive() // start with first received deferred value
     while (isActive) { // loop while not cancelled/closed
@@ -483,7 +465,7 @@ fun CoroutineScope.switchMapDeferreds(input: ReceiveChannel<Deferred<String>>) =
             input.onReceiveOrNull { update ->
                 update // replaces next value to wait
             }
-            current.onAwait { value ->  
+            current.onAwait { value ->
                 send(value) // send value that current deferred has produced
                 input.receiveOrNull() // and use the next deferred from the input channel
             }
@@ -506,7 +488,7 @@ fun main() = runBlocking<Unit> {
 //sampleStart
     val chan = Channel<Deferred<String>>() // テスト用のチャネル
     launch { // プリント用のコルーチンを起動する
-        for (s in switchMapDeferreds(chan)) 
+        for (s in switchMapDeferreds(chan))
             println(s) // 受信した文字列をプリントする
     }
     chan.send(asyncString("BEGIN", 100))
@@ -517,7 +499,7 @@ fun main() = runBlocking<Unit> {
     delay(500) // 最後のものの前に時間を与える
     chan.send(asyncString("END", 500))
     delay(1000) // 処理に時間を与える
-    chan.close() // チャネルを閉じる ... 
+    chan.close() // チャネルを閉じる ...
     delay(500) // 終了させるためにしばらく待つ
 //sampleEnd
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 package kotlinx.coroutines
@@ -73,7 +73,7 @@ private class BlockingCoroutine<T>(
             eventLoop?.decrementUseCount()
         }
         // now return result
-        val state = state
+        val state = state.unboxState()
         (state as? CompletedExceptionally)?.let { throw it.cause }
         state as T
     }

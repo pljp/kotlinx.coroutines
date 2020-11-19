@@ -1,20 +1,5 @@
-<!--- INCLUDE .*/example-([a-z]+)-([0-9a-z]+)\.kt 
-/*
- * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
- */
+<!--- TEST_NAME ChannelsGuideTest -->
 
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.$$1$$2
--->
-<!--- KNIT     ../kotlinx-coroutines-core/jvm/test/guide/.*\.kt -->
-<!--- TEST_OUT ../kotlinx-coroutines-core/jvm/test/guide/test/ChannelsGuideTest.kt
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.test
-
-import org.junit.Test
-
-class ChannelsGuideTest {
---> 
 **目次**
 
 <!--- TOC -->
@@ -31,7 +16,7 @@ class ChannelsGuideTest {
   * [チャネルは公正](#チャネルは公正)
   * [ティッカーチャネル](#ティッカーチャネル)
 
-<!--- END_TOC -->
+<!--- END -->
 
 ## チャネル
 
@@ -112,7 +97,7 @@ fun main() = runBlocking {
 
 > [ここ](../core/kotlinx-coroutines-core/test/guide/example-channel-02.kt)で完全なコードを取得できます
 
-<!--- TEST 
+<!--- TEST
 1
 4
 9
@@ -152,7 +137,7 @@ fun main() = runBlocking {
 
 > [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-channel-03.kt)で完全なコードを取得できます
 
-<!--- TEST 
+<!--- TEST
 1
 4
 9
@@ -203,7 +188,9 @@ fun main() = runBlocking {
 //sampleStart
     val numbers = produceNumbers() // 1から始まる整数を生成する
     val squares = square(numbers) // 整数を平方にする
-    for (i in 1..5) println(squares.receive()) // 最初の5つをプリントする
+    repeat(5) {
+        println(squares.receive()) // 最初の5つをプリントする
+    }
     println("Done!") // 完了
     coroutineContext.cancelChildren() // 子コルーチンをキャンセルする
 //sampleEnd
@@ -223,7 +210,7 @@ fun CoroutineScope.square(numbers: ReceiveChannel<Int>): ReceiveChannel<Int> = p
 
 > [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-channel-04.kt)で完全なコードを取得できます
 
-<!--- TEST 
+<!--- TEST
 1
 4
 9
@@ -239,7 +226,7 @@ Done!
 コルーチンのパイプラインを使って素数を生成する例で、パイプラインを徹底的に使ってみましょう。 無限の数列から始めます。
 
 <div class="sample" markdown="1" theme="idea" data-highlight-only>
- 
+
 ```kotlin
 fun CoroutineScope.numbersFrom(start: Int) = produce<Int> {
     var x = start
@@ -262,11 +249,11 @@ fun CoroutineScope.filter(numbers: ReceiveChannel<Int>, prime: Int) = produce<In
 </div>
 
 次に、2から数値のストリームを開始し、現在のチャネルから素数を取得し、見つかった素数ごとに新しいパイプラインステージを起動して、パイプラインを構築します。
- 
+
 ```
-numbersFrom(2) -> filter(2) -> filter(3) -> filter(5) -> filter(7) ... 
-``` 
- 
+numbersFrom(2) -> filter(2) -> filter(3) -> filter(5) -> filter(7) ...
+```
+
 次の例では最初の10個の素数をプリントし、パイプライン全体をメインスレッドのコンテキストで実行します。
 すべてのコルーチンはメインの[runBlocking]コルーチンの範囲で起動されるため、開始したすべてのコルーチンの明示的なリストを保持する必要はありません。
 最初の10個の素数をプリントした後、[cancelChildren][kotlin.coroutines.CoroutineContext.cancelChildren]拡張関数を使用してすべての子コルーチンを取り消します。
@@ -282,13 +269,13 @@ import kotlinx.coroutines.channels.*
 fun main() = runBlocking {
 //sampleStart
     var cur = numbersFrom(2)
-    for (i in 1..10) {
+    repeat(10) {
         val prime = cur.receive()
         println(prime)
         cur = filter(cur, prime)
     }
     coroutineContext.cancelChildren() // すべての子をキャンセルしてメインを終わる
-//sampleEnd    
+//sampleEnd
 }
 
 fun CoroutineScope.numbersFrom(start: Int) = produce<Int> {
@@ -326,9 +313,9 @@ fun CoroutineScope.filter(numbers: ReceiveChannel<Int>, prime: Int) = produce<In
 `produce` を `buildIterator`、 `send` を `yield`、 `receive` を `next`、 `ReceiveChannel` を `Iterator` で置き換え、コルーチンスコープを取り除きます。 `runBlocking` も必要ありません。
 ただし、上記のようなチャネルを使用するパイプラインの利点は、[Dispatchers.Default]コンテキストで実行すると実際に複数のCPUコアを使用できることです。
 
-どのみち、これは素数を見つけるには非常に非実用的な方法です。 
+どのみち、これは素数を見つけるには非常に非実用的な方法です。
 実際にはパイプラインは（リモートサービスへの非同期呼び出しのような）いくつかの他のサスペンド呼び出しを必要とします。これらのパイプラインは `sequence`/`iterator` を使用して構築することはできません 。なぜなら完全に非同期の `produce` とは異なり任意の中断を許さないためです。
- 
+
 ### ファンアウト
 
 複数のコルーチンが同じチャネルから受信し、それらの間で作業を分散することがあります。
@@ -356,7 +343,7 @@ fun CoroutineScope.produceNumbers() = produce<Int> {
 fun CoroutineScope.launchProcessor(id: Int, channel: ReceiveChannel<Int>) = launch {
     for (msg in channel) {
         println("Processor #$id received $msg")
-    }    
+    }
 }
 ```
 
@@ -392,7 +379,7 @@ fun CoroutineScope.produceNumbers() = produce<Int> {
 fun CoroutineScope.launchProcessor(id: Int, channel: ReceiveChannel<Int>) = launch {
     for (msg in channel) {
         println("Processor #$id received $msg")
-    }    
+    }
 }
 ```
 
@@ -514,7 +501,7 @@ fun main() = runBlocking<Unit> {
     // 何も受け取らずに待つ...
     delay(1000)
     sender.cancel() // 送信者コルーチンをキャンセルする
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -539,7 +526,7 @@ Sending 4
 
 ### チャネルは公正
 
-チャネルへの操作の送信と受信は、複数のコルーチンからの呼び出しの順番に関して _公正_ です。 
+チャネルへの操作の送信と受信は、複数のコルーチンからの呼び出しの順番に関して _公正_ です。
 それらはファーストイン・ファーストアウトの順序で提供されます。例えば `receive` を呼び出す最初のコルーチンは要素を取得します。
 次の例では、2つのコルーチン「ping」と「pong」が共有「table」チャネルから「ball」オブジェクトを受け取ります。
 
@@ -611,9 +598,9 @@ import kotlinx.coroutines.channels.*
 fun main() = runBlocking<Unit> {
     val tickerChannel = ticker(delay = 100, initialDelay = 0) // ティッカーチャネルを作る
     var nextElement = withTimeoutOrNull(1) { tickerChannel.receive() }
-    println("Initial element is available immediately: $nextElement") // 初期の遅延時間はまだ経過していない
+    println("Initial element is available immediately: $nextElement") // 初期遅延なし
 
-    nextElement = withTimeoutOrNull(50) { tickerChannel.receive() } // すべての後続要素は100ms遅延する
+    nextElement = withTimeoutOrNull(50) { tickerChannel.receive() } // すべての後続要素には100msの遅延がある
     println("Next element is not ready in 50 ms: $nextElement")
 
     nextElement = withTimeoutOrNull(60) { tickerChannel.receive() }
@@ -626,7 +613,7 @@ fun main() = runBlocking<Unit> {
     nextElement = withTimeoutOrNull(1) { tickerChannel.receive() }
     println("Next element is available immediately after large consumer delay: $nextElement")
     // `receive` 呼び出しの間の休止が考慮され、次の要素がより速く到着することに注意
-    nextElement = withTimeoutOrNull(60) { tickerChannel.receive() } 
+    nextElement = withTimeoutOrNull(60) { tickerChannel.receive() }
     println("Next element is ready in 50ms after consumer pause in 150ms: $nextElement")
 
     tickerChannel.cancel() // これ以上要素が必要でないことを示す

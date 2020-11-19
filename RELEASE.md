@@ -19,7 +19,7 @@ To release new `<version>` of `kotlinx-coroutines`:
    * [`ui/kotlinx-coroutines-android/animation-app/gradle.properties`](ui/kotlinx-coroutines-android/animation-app/gradle.properties)    
    * Make sure to **exclude** `CHANGES.md` from replacements.
    
-   As an alternative approach you can use `./bump_version.sh old_version new_version`
+   As an alternative approach you can use `./bump-version.sh old_version new_version`
   
 5. Write release notes in [`CHANGES.md`](CHANGES.md):
    * Use old releases as example of style.
@@ -53,7 +53,8 @@ To release new `<version>` of `kotlinx-coroutines`:
    * Create a release named `<version>`. 
    * Cut & paste lines from [`CHANGES.md`](CHANGES.md) into description.    
 
-3. Build and publish documentation for web-site: <br>
+3. Build and publish documentation for web-site
+   (make sure you have [Docker](https://www.docker.com/) installed first): <br>
    `site/deploy.sh <version> push`
    
 4. In [Bintray](https://bintray.com/kotlin/kotlinx/kotlinx.coroutines) admin interface:
@@ -63,18 +64,14 @@ To release new `<version>` of `kotlinx-coroutines`:
    
 5. Announce new release in [Slack](https://kotlinlang.slack.com)   
 
-6. Create a ticket to update coroutines version on [try.kotlinlang.org](try.kotlinlang.org).
-   * Use [KT-30870](https://youtrack.jetbrains.com/issue/KT-30870) as a template
-   * This step should be skipped for eap versions that are not merged to `master`
-
-7. Switch into `develop` branch:<br>
+6. Switch into `develop` branch:<br>
    `git checkout develop`
  
-8. Fetch the latest `master`:<br>
+7. Fetch the latest `master`:<br>
    `git fetch` 
    
-9. Merge release from `master`:<br>
+8. Merge release from `master`:<br>
    `git merge origin/master`
    
-10. Push updates to `develop`:<br>
+9. Push updates to `develop`:<br>
    `git push`      

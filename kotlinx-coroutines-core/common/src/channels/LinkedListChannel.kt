@@ -1,9 +1,10 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 package kotlinx.coroutines.channels
 
+import kotlinx.coroutines.internal.*
 import kotlinx.coroutines.selects.*
 
 /**
@@ -16,7 +17,7 @@ import kotlinx.coroutines.selects.*
  *
  * @suppress **This an internal API and should not be used from general code.**
  */
-internal open class LinkedListChannel<E> : AbstractChannel<E>() {
+internal open class LinkedListChannel<E>(onUndeliveredElement: OnUndeliveredElement<E>?) : AbstractChannel<E>(onUndeliveredElement) {
     protected final override val isBufferAlwaysEmpty: Boolean get() = true
     protected final override val isBufferEmpty: Boolean get() = true
     protected final override val isBufferAlwaysFull: Boolean get() = false
@@ -29,8 +30,7 @@ internal open class LinkedListChannel<E> : AbstractChannel<E>() {
             when {
                 result === OFFER_SUCCESS -> return OFFER_SUCCESS
                 result === OFFER_FAILED -> { // try to buffer
-                    val sendResult = sendBuffered(element)
-                    when (sendResult) {
+                    when (val sendResult = sendBuffered(element)) {
                         null -> return OFFER_SUCCESS
                         is Closed<*> -> return sendResult
                     }
@@ -52,6 +52,7 @@ internal open class LinkedListChannel<E> : AbstractChannel<E>() {
                 result === ALREADY_SELECTED -> return ALREADY_SELECTED
                 result === OFFER_SUCCESS -> return OFFER_SUCCESS
                 result === OFFER_FAILED -> {} // retry
+                result === RETRY_ATOMIC -> {} // retry
                 result is Closed<*> -> return result
                 else -> error("Invalid result $result")
             }

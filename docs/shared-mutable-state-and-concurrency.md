@@ -1,20 +1,5 @@
-<!--- INCLUDE .*/example-([a-z]+)-([0-9a-z]+)\.kt 
-/*
- * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
- */
+<!--- TEST_NAME SharedStateGuideTest -->
 
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.$$1$$2
--->
-<!--- KNIT     ../kotlinx-coroutines-core/jvm/test/guide/.*\.kt -->
-<!--- TEST_OUT ../kotlinx-coroutines-core/jvm/test/guide/test/SharedStateGuideTest.kt
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.test
-
-import org.junit.Test
-
-class SharedStateGuideTest {
---> 
 **目次**
 
 <!--- TOC -->
@@ -28,7 +13,7 @@ class SharedStateGuideTest {
   * [排他制御](#排他制御)
   * [アクター](#アクター)
 
-<!--- END_TOC -->
+<!--- END -->
 
 ## 共有ミュータブルステートと並行処理
 
@@ -39,8 +24,8 @@ class SharedStateGuideTest {
 
 ### 問題
 
-1000のコルーチンを同じように100回実行してみましょう。
-さらなる比較のために完了時間も測定します。
+同じアクションを1000回実行する100個のコルーチンを起動しましょう。
+さらに比較するために、完了時間を測定します。
 
 <div class="sample" markdown="1" theme="idea" data-highlight-only>
 
@@ -57,11 +42,11 @@ suspend fun massiveRun(action: suspend () -> Unit) {
             }
         }
     }
-    println("Completed ${n * k} actions in $time ms")    
+    println("Completed ${n * k} actions in $time ms")
 }
 ```
 
-</div> 
+</div>
 
 マルチスレッドの[Dispatchers.Default]を使用して共有ミュータブル変数をインクリメントする非常に単純なアクションから始めます。
 
@@ -71,7 +56,7 @@ suspend fun massiveRun(action: suspend () -> Unit) {
 
 ```kotlin
 import kotlinx.coroutines.*
-import kotlin.system.*    
+import kotlin.system.*
 
 suspend fun massiveRun(action: suspend () -> Unit) {
     val n = 100  // 起動するコルーチンの数
@@ -85,7 +70,7 @@ suspend fun massiveRun(action: suspend () -> Unit) {
             }
         }
     }
-    println("Completed ${n * k} actions in $time ms")    
+    println("Completed ${n * k} actions in $time ms")
 }
 //sampleStart
 var counter = 0
@@ -98,7 +83,7 @@ fun main() = runBlocking {
     }
     println("Counter = $counter")
 }
-//sampleEnd    
+//sampleEnd
 ```
 
 </div>
@@ -114,7 +99,7 @@ Counter =
 
 ### Volatileは役に立たない
 
-変数を `volatile` にすると並行処理の問題が解決されるという誤解が一般的です。 それを試してみましょう。
+変数を `volatile` にすると並行性の問題が解決されるという誤解が一般的です。 それを試してみましょう。
 
 <!--- CLEAR -->
 
@@ -128,7 +113,7 @@ suspend fun massiveRun(action: suspend () -> Unit) {
     val n = 100  // number of coroutines to launch
     val k = 1000 // times an action is repeated by each coroutine
     val time = measureTimeMillis {
-        coroutineScope { // scope for coroutines 
+        coroutineScope { // scope for coroutines
             repeat(n) {
                 launch {
                     repeat(k) { action() }
@@ -136,7 +121,7 @@ suspend fun massiveRun(action: suspend () -> Unit) {
             }
         }
     }
-    println("Completed ${n * k} actions in $time ms")    
+    println("Completed ${n * k} actions in $time ms")
 }
 
 //sampleStart
@@ -151,7 +136,7 @@ fun main() = runBlocking {
     }
     println("Counter = $counter")
 }
-//sampleEnd    
+//sampleEnd
 ```
 
 </div>
@@ -163,11 +148,11 @@ Completed 100000 actions in
 Counter =
 -->
 
-このコードはより遅く動作しますが、volatile変数は対応する変数の線形（専門用語で「アトミック」）読み書きを保証するものの、より大きなアクション（この場合はインクリメント）のアトミック性を提供しないため、最後に「Counter = 100000」を得られません。 
+このコードはより遅く動作しますが、volatile変数は対応する変数の線形（専門用語で「アトミック」）読み書きを保証するものの、より大きなアクション（この場合はインクリメント）のアトミック性を提供しないため、最後に「Counter = 100000」を得られません。
 
 ### スレッドセーフなデータ構造
 
-スレッドとコルーチンの両方で機能する一般的な解決策は、共有状態で実行する必要があるすべての操作で必ず同期を提供するスレッドセーフ（別名、同期、線形化、またはアトミック）データ構造を使用することです。
+スレッドとコルーチンの両方で動作する一般的なソリューションは、共有状態で実行する操作に必要なすべての同期を提供するスレッドセーフ（別名、同期、線形化、またはアトミック）データ構造を使用することです。
 単純なカウンタの場合、アトミックな `incrementAndGet` 操作を持つ `AtomicInteger` クラスを使うことができます。
 
 <!--- CLEAR -->
@@ -191,11 +176,11 @@ suspend fun massiveRun(action: suspend () -> Unit) {
             }
         }
     }
-    println("Completed ${n * k} actions in $time ms")    
+    println("Completed ${n * k} actions in $time ms")
 }
 
 //sampleStart
-var counter = AtomicInteger()
+val counter = AtomicInteger()
 
 fun main() = runBlocking {
     withContext(Dispatchers.Default) {
@@ -205,7 +190,7 @@ fun main() = runBlocking {
     }
     println("Counter = $counter")
 }
-//sampleEnd    
+//sampleEnd
 ```
 
 </div>
@@ -244,7 +229,7 @@ suspend fun massiveRun(action: suspend () -> Unit) {
             }
         }
     }
-    println("Completed ${n * k} actions in $time ms")    
+    println("Completed ${n * k} actions in $time ms")
 }
 
 //sampleStart
@@ -262,7 +247,7 @@ fun main() = runBlocking {
     }
     println("Counter = $counter")
 }
-//sampleEnd      
+//sampleEnd
 ```
 
 </div>
@@ -302,7 +287,7 @@ suspend fun massiveRun(action: suspend () -> Unit) {
             }
         }
     }
-    println("Completed ${n * k} actions in $time ms")    
+    println("Completed ${n * k} actions in $time ms")
 }
 
 //sampleStart
@@ -318,7 +303,7 @@ fun main() = runBlocking {
     }
     println("Counter = $counter")
 }
-//sampleEnd     
+//sampleEnd
 ```
 
 </div>
@@ -364,7 +349,7 @@ suspend fun massiveRun(action: suspend () -> Unit) {
             }
         }
     }
-    println("Completed ${n * k} actions in $time ms")    
+    println("Completed ${n * k} actions in $time ms")
 }
 
 //sampleStart
@@ -382,7 +367,7 @@ fun main() = runBlocking {
     }
     println("Counter = $counter")
 }
-//sampleEnd    
+//sampleEnd
 ```
 
 </div>
@@ -463,7 +448,7 @@ suspend fun massiveRun(action: suspend () -> Unit) {
             }
         }
     }
-    println("Completed ${n * k} actions in $time ms")    
+    println("Completed ${n * k} actions in $time ms")
 }
 
 // counterActorのメッセージ型
@@ -483,7 +468,7 @@ fun CoroutineScope.counterActor() = actor<CounterMsg> {
 }
 
 //sampleStart
-fun main() = runBlocking {
+fun main() = runBlocking<Unit> {
     val counter = counterActor() // アクターを作る
     withContext(Dispatchers.Default) {
         massiveRun {
@@ -496,7 +481,7 @@ fun main() = runBlocking {
     println("Counter = ${response.await()}")
     counter.close() // アクターを終了する
 }
-//sampleEnd    
+//sampleEnd
 ```
 
 </div>

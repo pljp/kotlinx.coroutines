@@ -1,20 +1,4 @@
-<!--- INCLUDE .*/example-([a-z]+)-([0-9a-z]+)\.kt 
-/*
- * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
- */
-
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.$$1$$2
--->
-<!--- KNIT     ../kotlinx-coroutines-core/jvm/test/guide/.*\.kt -->
-<!--- TEST_OUT ../kotlinx-coroutines-core/jvm/test/guide/test/ComposingGuideTest.kt
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.test
-
-import org.junit.Test
-
-class ComposingGuideTest {
---> 
+<!--- TEST_NAME ComposingGuideTest -->
 
 **目次**
 
@@ -27,7 +11,7 @@ class ComposingGuideTest {
   * [Asyncスタイル関数](#asyncスタイル関数)
   * [asyncでの構造化並行性](#asyncでの構造化並行性)
 
-<!--- END_TOC -->
+<!--- END -->
 
 ## サスペンド関数の作成
 
@@ -76,7 +60,7 @@ fun main() = runBlocking<Unit> {
         println("The answer is ${one + two}")
     }
     println("Completed in $time ms")
-//sampleEnd    
+//sampleEnd
 }
 
 suspend fun doSomethingUsefulOne(): Int {
@@ -112,10 +96,10 @@ Completed in 2017 ms
 これは、他のすべてのコルーチンと並行に動作する軽量スレッドである別のコルーチンを開始します。
 相違点は `launch` は[Job]を返し、結果の値は持ちませんが、 `async` は結果を後で提供する約束を表す軽量でノンブロッキングなフューチャーである[Deferred]を返します。
 遅延された値に対して `.await()` を使用して最終的な結果を得ることができますが、 `Deferred` も `Job` なので必要に応じてキャンセルすることができます。
- 
+
 
 <div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
- 
+
 ```kotlin
 import kotlinx.coroutines.*
 import kotlin.system.*
@@ -128,7 +112,7 @@ fun main() = runBlocking<Unit> {
         println("The answer is ${one.await() + two.await()}")
     }
     println("Completed in $time ms")
-//sampleEnd    
+//sampleEnd
 }
 
 suspend fun doSomethingUsefulOne(): Int {
@@ -182,7 +166,7 @@ fun main() = runBlocking<Unit> {
         println("The answer is ${one.await() + two.await()}")
     }
     println("Completed in $time ms")
-//sampleEnd    
+//sampleEnd
 }
 
 suspend fun doSomethingUsefulOne(): Int {
@@ -245,7 +229,7 @@ fun somethingUsefulTwoAsync() = GlobalScope.async {
 <!--- CLEAR -->
 
 <div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
- 
+
 ```kotlin
 import kotlinx.coroutines.*
 import kotlin.system.*
@@ -305,7 +289,9 @@ Completed in 1085 ms
 ### asyncでの構造化並行性
 
 [asyncを使用した並行処理](#asyncを使用した並行処理)の例をとり、 `doSomethingUsefulOne` と `doSomethingUsefulTwo` を並行に実行し、その結果の合計を返す関数を抽出しましょう。
-[async]コルーチンビルダーは[CoroutineScope]の拡張として定義されているため、スコープ内に配置する必要があります。つまり、[coroutineScope]関数が提供するものです。
+[async]コルーチンビルダーは[CoroutineScope]の拡張として定義されているため、スコープ内に配置する必要があります。つまり、[coroutineScope][_coroutineScope]関数が提供するものです。
+
+<div class="sample" markdown="1" theme="idea" data-highlight-only>
 
 ```kotlin
 suspend fun concurrentSum(): Int = coroutineScope {
@@ -322,7 +308,7 @@ suspend fun concurrentSum(): Int = coroutineScope {
 <!--- CLEAR -->
 
 <div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
- 
+
 ```kotlin
 import kotlinx.coroutines.*
 import kotlin.system.*
@@ -333,7 +319,7 @@ fun main() = runBlocking<Unit> {
         println("The answer is ${concurrentSum()}")
     }
     println("Completed in $time ms")
-//sampleEnd    
+//sampleEnd
 }
 
 suspend fun concurrentSum(): Int = coroutineScope {
@@ -384,7 +370,7 @@ fun main() = runBlocking<Unit> {
 }
 
 suspend fun failedConcurrentSum(): Int = coroutineScope {
-    val one = async<Int> { 
+    val one = async<Int> {
         try {
             delay(Long.MAX_VALUE) // 非常に長い計算をエミュレート
             42
@@ -392,7 +378,7 @@ suspend fun failedConcurrentSum(): Int = coroutineScope {
             println("First child was cancelled")
         }
     }
-    val two = async<Int> { 
+    val two = async<Int> {
         println("Second child throws an exception")
         throw ArithmeticException()
     }
@@ -424,5 +410,5 @@ Computation failed with ArithmeticException
 [Job.start]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/start.html
 [GlobalScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-global-scope/index.html
 [CoroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope/index.html
-[coroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/coroutine-scope.html
+[_coroutineScope]: https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/coroutine-scope.html
 <!--- END -->

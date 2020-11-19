@@ -1,20 +1,4 @@
-<!--- INCLUDE .*/example-([a-z]+)-([0-9a-z]+)\.kt 
-/*
- * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
- */
-
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.$$1$$2
--->
-<!--- KNIT     ../kotlinx-coroutines-core/jvm/test/guide/.*\.kt -->
-<!--- TEST_OUT ../kotlinx-coroutines-core/jvm/test/guide/test/DispatcherGuideTest.kt
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.test
-
-import org.junit.Test
-
-class DispatchersGuideTest {
---> 
+<!--- TEST_NAME DispatcherGuideTest -->
 
 **目次**
 
@@ -24,6 +8,8 @@ class DispatchersGuideTest {
   * [ディスパッチャーとスレッド](#ディスパッチャーとスレッド)
   * [制約なし対制約ディスパッチャー](#制約なし対制約ディスパッチャー)
   * [コルーチンとスレッドのデバッグ](#コルーチンとスレッドのデバッグ)
+    * [IDEAを使用したデバッグ](#ideaを使用したデバッグ)
+    * [ロギングを使用したデバッグ](#ロギングを使用したデバッグ)
   * [スレッド間のジャンプ](#スレッド間のジャンプ)
   * [コンテキストにおけるジョブ](#コンテキストにおけるジョブ)
   * [コルーチンの子](#コルーチンの子)
@@ -33,7 +19,7 @@ class DispatchersGuideTest {
   * [コルーチンスコープ](#コルーチンスコープ)
   * [スレッドローカルデータ](#スレッドローカルデータ)
 
-<!--- END_TOC -->
+<!--- END -->
 
 ## コルーチンコンテキストとディスパッチャー
 
@@ -46,7 +32,7 @@ class DispatchersGuideTest {
 コルーチンコンテキストには、対応するコルーチンが実行に使用するスレッドを決定する _コルーチンディスパッチャー_ （[CoroutineDispatcher]を参照）が含まれています。
 コルーチンディスパッチャーは、コルーチンの実行を特定のスレッドに限定したり、スレッドプールにディスパッチしたり、制約なしで実行させたりすることができます。
 
-[launch]や[async]のようなすべてのコルーチンビルダーは、新しいコルーチンとその他のコンテキスト要素のディスパッチャーを明示的に指定するために使用できるオプションの[CoroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines/-coroutine-context/) 
+[launch]や[async]のようなすべてのコルーチンビルダーは、新しいコルーチンとその他のコンテキスト要素のディスパッチャーを明示的に指定するために使用できるオプションの[CoroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines/-coroutine-context/)
 パラメーターを受け入れます。
 
 次の例を試してください。
@@ -70,7 +56,7 @@ fun main() = runBlocking<Unit> {
     launch(newSingleThreadContext("MyOwnThread")) { // 独自の新しいスレッドを取得
         println("newSingleThreadContext: I'm working in thread ${Thread.currentThread().name}")
     }
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -95,13 +81,13 @@ main runBlocking      : I'm working in thread main
 [Dispatchers.Unconfined]は `main` スレッドで動作しているようにも見える特別なディスパッチャーですが、実際は後述する異なるメカニズムです。
 
 [GlobalScope]でコルーチンが起動されるときに使用されるデフォルトのディスパッチャーは[Dispatchers.Default]で表され、共有バックグラウンドスレッドプールを使用するため、 `launch(Dispatchers.Default) {...}` は `GlobalScope.launch {...}` と同じディスパッチャーを使用します 。
-  
+
 [newSingleThreadContext]は、実行するコルーチンのスレッドを作成します。
 専用のスレッドは非常に高価なリソースです。
 実際のアプリケーションでは、不要になったときに[close][ExecutorCoroutineDispatcher.close]関数を使用して解放するか、トップレベル変数に格納してアプリケーション全体で再利用する必要があります。
 
 ### 制約なし対制約ディスパッチャー
- 
+
 [Dispatchers.Unconfined]コルーチンディスパッチャーは、最初の中断ポイントまで呼び出し元スレッドでコルーチンで実行します。
 中断後、呼び出されたサスペンド関数によって完全に決定されるスレッド内でコルーチンを再開します。
 制約のないディスパッチャーは、CPU時間を消費せず特定のスレッドに限定された共有データ（UIなど）を更新しないコルーチンに適しています。
@@ -126,7 +112,7 @@ fun main() = runBlocking<Unit> {
         delay(1000)
         println("main runBlocking: After delay in thread ${Thread.currentThread().name}")
     }
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -135,7 +121,7 @@ fun main() = runBlocking<Unit> {
 > [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-context-02.kt)で完全なコードを取得できます
 
 次のように出力します。
- 
+
 ```text
 Unconfined      : I'm working in thread main
 main runBlocking: I'm working in thread main
@@ -144,7 +130,7 @@ main runBlocking: After delay in thread main
 ```
 
 <!--- TEST LINES_START -->
- 
+
 このように、 `runBlocking {...}` から継承されたコンテキストを持つコルーチンは `main` スレッドで実行され続け、一方、制約のないものは[delay]関数が使用しているデフォルトのエグゼキュータースレッドで再開します。
 
 > Unconfinedディスパッチャーは、コルーチンをすぐに実行する必要があるため、後で実行するためにコルーチンのディスパッチが不要であるか、望ましくない副作用を生じる稀なケースで役立つ高度なメカニズムです。
@@ -153,9 +139,34 @@ main runBlocking: After delay in thread main
 ### コルーチンとスレッドのデバッグ
 
 コルーチンはあるスレッドで中断し、別のスレッドで再開できます。
-シングルスレッドのディスパッチャーであっても、コルーチンがいつ、どこで、何を実行しているのか把握するのは難しいかもしれません。
-スレッドを使用してアプリケーションをデバッグする一般的な方法は、ログファイルの各ログステートメントにスレッド名を出力することです。
-この機能は、ロギングフレームワークによって普遍的にサポートされています。 コルーチンを使用する場合、スレッド名だけではコンテキストの多くが得られないので、 `kotlinx.coroutines` にはデバッグ機能が組み込まれています。
+シングルスレッドのディスパッチャを使用しても、特別なツールがない場合、コルーチンが何を、どこで、いつ実行していたかを把握するのは難しい場合があります。
+
+#### IDEAを使用したデバッグ
+
+Kotlinプラグインのコルーチンデバッガーは、IntelliJ IDEAでのコルーチンのデバッグを簡素化します。
+
+> デバッグは、バージョン1.3.8以降の `kotlinx-coroutines-core` で機能します。
+
+**デバッグ**ツールウィンドウには、**コルーチン**タブが含まれています。 このタブでは、現在実行中のコルーチンと一時停止中のコルーチンの両方に関する情報を見つけることができます。
+コルーチンは、実行しているディスパッチャによってグループ化されます。
+
+![Debugging coroutines](images/coroutine-idea-debugging-1.png)
+
+コルーチンデバッガーを使用すると、次のことができます。
+* 各コルーチンの状態の確認。
+* 実行中のコルーチンと一時停止中のコルーチンの両方について、ローカル変数とキャプチャされた変数の値を確認します。
+* コルーチン作成スタック全体と、コルーチン内の呼び出しスタックの確認。 スタックには、標準のデバッグ中に失われるフレームも含め、変数値を持つすべてのフレームが含まれます。
+* 各コルーチンとそのスタックの状態を含む完全なレポートを取得します。 これを取得するには、**コルーチン**タブ内を右クリックし、**コルーチンダンプを取得**をクリックします。
+
+コルーチンのデバッグを開始するには、ブレークポイントを設定し、アプリケーションをデバッグモードで実行する必要があります。
+
+[チュートリアル](https://kotlinlang.org/docs/tutorials/coroutines/debug-coroutines-with-idea.html)でコルーチンのデバッグの詳細をご覧ください。
+
+#### ロギングを使用したデバッグ
+
+コルーチンデバッガーを使用せずにスレッドを使用したアプリケーションをデバッグする別の方法は、各ログステートメントでログファイルにスレッド名を出力することです。
+この機能は、ロギングフレームワークによって普遍的にサポートされています。
+コルーチンを使用する場合、スレッド名だけではコンテキストがあまり得られないため、 `kotlinx.coroutines`には、簡単にするためのデバッグ機能が含まれています。
 
 `-Dkotlinx.coroutines.debug` JVMオプションを付けて次のコードを実行してください。
 
@@ -177,7 +188,7 @@ fun main() = runBlocking<Unit> {
         7
     }
     log("The answer is ${a.await() * b.await()}")
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -185,7 +196,7 @@ fun main() = runBlocking<Unit> {
 
 > [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-context-03.kt)で完全なコードを取得できます
 
-3つのコルーチンがあります。 `runBlocking` 内のメインコルーチン (＃1) と、遅延値 `a` (#2) および `b` (#3) を計算する2つのコルーチン。
+3つのコルーチンがあります。 `runBlocking` 内のメインコルーチン (#1) と、遅延値 `a` (#2) および `b` (#3) を計算する2つのコルーチン。
 これらはすべて `runBlocking` のコンテキストで実行されており、メインスレッドに限定されています。
 このコードの出力は次のとおりです。
 
@@ -228,7 +239,7 @@ fun main() {
             }
         }
     }
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -261,7 +272,7 @@ import kotlinx.coroutines.*
 fun main() = runBlocking<Unit> {
 //sampleStart
     println("My job is ${coroutineContext[Job]}")
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -286,7 +297,7 @@ My job is "coroutine#1":BlockingCoroutine{Active}@6d311334
 
 ただし、[GlobalScope]を使用してコルーチンを起動する場合、新しいコルーチンのジョブの親はありません。
 したがって、起動されたスコープとは無関係であり、独立して動作します。
-  
+
 
 <div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
 
@@ -409,7 +420,7 @@ fun main() = runBlocking(CoroutineName("main")) {
         6
     }
     log("The answer for v1 / v2 = ${v1.await() / v2.await()}")
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -418,7 +429,7 @@ fun main() = runBlocking(CoroutineName("main")) {
 > [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-context-08.kt)で完全なコードを取得できます
 
 `-Dkotlinx.coroutines.debug` JVMオプションで出力される結果は次のようになります。
- 
+
 ```text
 [main @main#1] Started main coroutine
 [main @v1coroutine#2] Computing v1
@@ -443,7 +454,7 @@ fun main() = runBlocking<Unit> {
     launch(Dispatchers.Default + CoroutineName("test")) {
         println("I'm working in thread ${Thread.currentThread().name}")
     }
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -478,7 +489,7 @@ I'm working in thread DefaultDispatcher-worker-1 @test#2
 ```kotlin
 class Activity {
     private val mainScope = MainScope()
-    
+
     fun destroy() {
         mainScope.cancel()
     }
@@ -487,19 +498,7 @@ class Activity {
 
 </div>
 
-または、この `Activity` クラスで[CoroutineScope]インターフェイスを実装できます。 それを行う最良の方法は、デフォルトのファクトリ関数でデリゲーションを使用することです。
-また、目的のディスパッチャー（この例では[Dispatchers.Default]を使用）とスコープを組み合わせることもできます。
-
-<div class="sample" markdown="1" theme="idea" data-highlight-only>
-
-```kotlin
-    class Activity : CoroutineScope by CoroutineScope(Dispatchers.Default) {
-    // 続く ...
-```
-
-</div>
-
-これで、コンテキストを明示的に指定することなく、この `Activity` のスコープでコルーチンを起動できます。 
+これで、定義された `scope` を使用して、この `Activity` のスコープでコルーチンを起動できます。
 デモでは、異なる時間遅延する10個のコルーチンを起動します。
 
 <div class="sample" markdown="1" theme="idea" data-highlight-only>
@@ -509,14 +508,14 @@ class Activity {
     fun doSomething() {
         // デモのために10個のコルーチンを起動し、それぞれ別の時間作業する
         repeat(10) { i ->
-            launch {
+            mainScope.launch {
                 delay((i + 1) * 200L) // 可変の遅延 200ms, 400ms, ... など
                 println("Coroutine $i is done")
             }
         }
     }
 } // Activityクラス終わり
-``` 
+```
 
 </div>
 
@@ -529,21 +528,19 @@ class Activity {
 <div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
 
 ```kotlin
-import kotlin.coroutines.*
 import kotlinx.coroutines.*
 
-class Activity : CoroutineScope by CoroutineScope(Dispatchers.Default) {
+class Activity {
+    private val mainScope = CoroutineScope(Dispatchers.Default) // use Default for test purposes
 
     fun destroy() {
-        cancel() // CoroutineScopeの拡張関数
+        mainScope.cancel()
     }
-    // 続く ...
 
-    // Activityクラスの続き
     fun doSomething() {
         // デモのために10個のコルーチンを起動し、それぞれ別の時間作業する
         repeat(10) { i ->
-            launch {
+            mainScope.launch {
                 delay((i + 1) * 200L) // 可変の遅延 200ms, 400ms, ... など
                 println("Coroutine $i is done")
             }
@@ -560,7 +557,7 @@ fun main() = runBlocking<Unit> {
     println("Destroying activity!")
     activity.destroy() // 全てのコルーチンをキャンセルする
     delay(1000) // 動作していないことを視覚的に確認する
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -580,6 +577,9 @@ Destroying activity!
 <!--- TEST -->
 
 ご覧のように、最初の2つのコルーチンだけがメッセージを出力し、他のコルーチンは `Activity.destroy()` で `job.cancel()` を1回呼び出すだけでキャンセルされました。
+
+> Androidは、ライフサイクルを持つすべてのエンティティでコルーチンスコープをファーストパーティでサポートしています。
+[該当するドキュメント](https://developer.android.com/topic/libraries/architecture/coroutines#lifecyclescope)を参照してください。
 
 ### スレッドローカルデータ
 
@@ -609,16 +609,15 @@ fun main() = runBlocking<Unit> {
     }
     job.join()
     println("Post-main, current thread: ${Thread.currentThread()}, thread local value: '${threadLocal.get()}'")
-//sampleEnd    
+//sampleEnd
 }
-```  
+```
 
-</div>                                                                                       
+</div>
 
 > [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-context-11.kt)で完全なコードを取得できます。
 
-この例では、[Dispatchers.Default]を使用してバックグラウンドスレッドプールで新しいコルーチンを起動するため、コルーチンはスレッドプールの異なるスレッドで動作しますが、コルーチンが実行されるスレッドに関係なく `threadLocal.asContextElement(value = "launch")` で指定したスレッドローカル変数の値は保持されます。
-
+この例では、[Dispatchers.Default]を使用してバックグラウンドスレッドプールで新しいコルーチンを起動するため、コルーチンはスレッドプールの異なるスレッドで動作しますが、コルーチンが実行されるスレッドに関係なく `threadLocal.asContextElement(value = "launch")` を使用して設定したスレッドローカル変数の値は保持されます。
 したがって、出力（[debug](#コルーチンとスレッドのデバッグ)を用いる）は次のようになります。
 
 ```text

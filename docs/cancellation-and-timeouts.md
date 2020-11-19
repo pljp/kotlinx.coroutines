@@ -1,20 +1,5 @@
-<!--- INCLUDE .*/example-([a-z]+)-([0-9a-z]+)\.kt 
-/*
- * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
- */
+<!--- TEST_NAME CancellationGuideTest -->
 
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.$$1$$2
--->
-<!--- KNIT     ../kotlinx-coroutines-core/jvm/test/guide/.*\.kt -->
-<!--- TEST_OUT ../kotlinx-coroutines-core/jvm/test/guide/test/CancellationTimeOutsGuideTest.kt
-// This file was automatically generated from coroutines-guide.md by Knit tool. Do not edit.
-package kotlinx.coroutines.guide.test
-
-import org.junit.Test
-
-class CancellationTimeOutsGuideTest {
---> 
 **目次**
 
 <!--- TOC -->
@@ -26,8 +11,9 @@ class CancellationTimeOutsGuideTest {
   * [`finally`でリソースを閉じる](#finallyでリソースを閉じる)
   * [キャンセル不可ブロックの実行](#キャンセル不可ブロックの実行)
   * [タイムアウト](#タイムアウト)
+  * [非同期タイムアウトとリソース](#非同期タイムアウトとリソース)
 
-<!--- END_TOC -->
+<!--- END -->
 
 ## キャンセルとタイムアウト
 
@@ -40,7 +26,7 @@ class CancellationTimeOutsGuideTest {
 [launch]関数は、実行中のコルーチンをキャンセルするために使用できる[job]を返します。
 
 <div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
- 
+
 ```kotlin
 import kotlinx.coroutines.*
 
@@ -57,9 +43,9 @@ fun main() = runBlocking {
     job.cancel() // ジョブをキャンセル
     job.join() // ジョブの完了を待つ
     println("main: Now I can quit.")
-//sampleEnd    
+//sampleEnd
 }
-``` 
+```
 
 </div>
 
@@ -110,7 +96,7 @@ fun main() = runBlocking {
     println("main: I'm tired of waiting!")
     job.cancelAndJoin() // ジョブをキャンセルして完了するのを待つ
     println("main: Now I can quit.")
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -120,7 +106,7 @@ fun main() = runBlocking {
 
 実行して、キャンセル後も "I'm sleeping" とプリントし続けることを確認します。
 
-<!--- TEST 
+<!--- TEST
 job: I'm sleeping 0 ...
 job: I'm sleeping 1 ...
 job: I'm sleeping 2 ...
@@ -162,7 +148,7 @@ fun main() = runBlocking {
     println("main: I'm tired of waiting!")
     job.cancelAndJoin() // ジョブをキャンセルして完了するのを待つ
     println("main: Now I can quit.")
-//sampleEnd    
+//sampleEnd
 }
 ```
 
@@ -185,10 +171,10 @@ main: Now I can quit.
 
 キャンセル可能なサスペンド関数は、キャンセル時に通常の方法で処理できる[CancellationException]をスローします。
 例えば、 `try {...} finally {...}` 式とKotlin `use` 関数は、コルーチンがキャンセルされたときに、通常の終了処理を実行します。
- 
- 
+
+
 <div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
- 
+
 ```kotlin
 import kotlinx.coroutines.*
 
@@ -208,9 +194,9 @@ fun main() = runBlocking {
     println("main: I'm tired of waiting!")
     job.cancelAndJoin() // ジョブをキャンセルして完了を待つ
     println("main: Now I can quit.")
-//sampleEnd    
+//sampleEnd
 }
-``` 
+```
 
 > [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-cancel-04.kt)で完全なコードを取得できます
 
@@ -232,9 +218,9 @@ main: Now I can quit.
 前の例の `finally` ブロックでサスペンド関数を使用しようとすると、このコードを実行しているコルーチンがキャンセルされるため[CancellationException]が発生します。
 （ファイルを閉じる、ジョブをキャンセルする、またはあらゆる種類の通信チャネルを閉じるなど）正常に動作するすべてのクローズ操作は大抵ノンブロッキングであり、サスペンド関数は含まれないため、通常これは問題ではありません。
 ただし、キャンセルされたコルーチンで中断する必要がある稀なケースでは、次の例のように [withContext]関数と [NonCancellable]コンテキストを使用して `withContext(NonCancellable) {...}` に対応するコードをラップすることができます。
- 
+
 <div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
- 
+
 ```kotlin
 import kotlinx.coroutines.*
 
@@ -258,9 +244,9 @@ fun main() = runBlocking {
     println("main: I'm tired of waiting!")
     job.cancelAndJoin() // ジョブをキャンセルして完了を待つ
     println("main: Now I can quit.")
-//sampleEnd    
+//sampleEnd
 }
-``` 
+```
 
 </div>
 
@@ -355,6 +341,108 @@ Result is null
 ```
 
 <!--- TEST -->
+
+### 非同期タイムアウトとリソース
+
+<!--
+  NOTE: Don't change this section name. It is being referenced to from within KDoc of withTimeout functions.
+-->
+
+[withTimeout]のタイムアウトイベントは、そのブロックで実行されているコードに関して非同期であり、タイムアウトブロック内から戻る直前であっても、いつでも発生する可能性があります。
+ブロック内でリソースを開いたり取得したりして、ブロック外で閉じるか解放する必要がある場合は、このことに注意してください。
+
+たとえば、ここでは、 `Resource` クラスを使用してクローズ可能なリソースを模倣します。このクラスは、`acquired` カウンターをインクリメントし、このカウンターを `close` 関数からデクリメントすることで、作成された回数を追跡します。
+小さなタイムアウトで多くのコルーチンを実行してみましょう。少し遅れて `withTimeout` ブロックの内側からこのリソースを取得し、外側から解放してみてください。
+
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
+```kotlin
+import kotlinx.coroutines.*
+
+//sampleStart
+var acquired = 0
+
+class Resource {
+    init { acquired++ } // Acquire the resource
+    fun close() { acquired-- } // Release the resource
+}
+
+fun main() {
+    runBlocking {
+        repeat(100_000) { // Launch 100K coroutines
+            launch {
+                val resource = withTimeout(60) { // Timeout of 60 ms
+                    delay(50) // Delay for 50 ms
+                    Resource() // Acquire a resource and return it from withTimeout block
+                }
+                resource.close() // Release the resource
+            }
+        }
+    }
+    // Outside of runBlocking all coroutines have completed
+    println(acquired) // Print the number of resources still acquired
+}
+//sampleEnd
+```
+
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-cancel-08.kt)で完全なコードを取得できます
+
+<!--- CLEAR -->
+
+上記のコードを実行すると、常にゼロが出力されるとは限りません。マシンのタイミングによって異なる場合があり、実際にゼロ以外の値を表示するには、この例のタイムアウトを微調整する必要があります。
+
+> ここでの `acquired` カウンターの10万コルーチンからのインクリメントとデクリメントは、常に同じメインスレッドから発生するため、完全に安全であることに注意してください。
+> これについては、コルーチンのコンテキストに関する次の章で詳しく説明します。
+
+この問題を回避するには、 `withTimeout` ブロックからリソースを返すのではなく、変数にリソースへの参照を格納します。
+
+<div class="sample" markdown="1" theme="idea" data-min-compiler-version="1.3">
+
+```kotlin
+import kotlinx.coroutines.*
+
+var acquired = 0
+
+class Resource {
+    init { acquired++ } // Acquire the resource
+    fun close() { acquired-- } // Release the resource
+}
+
+fun main() {
+//sampleStart
+    runBlocking {
+        repeat(100_000) { // Launch 100K coroutines
+            launch {
+                var resource: Resource? = null // Not acquired yet
+                try {
+                    withTimeout(60) { // Timeout of 60 ms
+                        delay(50) // Delay for 50 ms
+                        resource = Resource() // Store a resource to the variable if acquired
+                    }
+                    // We can do something else with the resource here
+                } finally {
+                    resource?.close() // Release the resource if it was acquired
+                }
+            }
+        }
+    }
+    // Outside of runBlocking all coroutines have completed
+    println(acquired) // Print the number of resources still acquired
+//sampleEnd
+}
+```
+
+</div>
+
+> [ここ](../kotlinx-coroutines-core/jvm/test/guide/example-cancel-09.kt)で完全なコードを取得できます。
+
+この例では、常にゼロが出力されます。 リソースがリークすることはありません。
+
+<!--- TEST
+0
+-->
 
 <!--- MODULE kotlinx-coroutines-core -->
 <!--- INDEX kotlinx.coroutines -->
